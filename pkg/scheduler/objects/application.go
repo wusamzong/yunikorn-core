@@ -111,6 +111,8 @@ type Application struct {
 	appEvents             *applicationEvents
 	sendStateChangeEvents bool // whether to send state-change events or not (simplifies testing)
 
+	dag 				  *DAG
+
 	sync.RWMutex
 }
 
@@ -948,10 +950,14 @@ func (sa *Application) tryAllocate(headRoom *resources.Resource, preemptionDelay
 	if sa.sortedRequests == nil {
 		return nil
 	}
-	if isDagApp(sa) {
+
+	if isDagApp(sa) && sa.dag==nil {
 		if allRequestWaiting(sa){
+			sa.dag=CreateDagManager(sa, true)
+			sa.dag.optimized()
 			return nil
 		}else{
+			// log.Log(log.SchedApplication).Info("wait")
 			return nil
 		}
 	}

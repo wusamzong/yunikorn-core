@@ -11,7 +11,7 @@ spec:
         app: sleep
         applicationId: "dag01"
         queue: root.default
-        parent: 
+        parent: ""
       name: task1
     spec:
       schedulerName: yunikorn
@@ -38,7 +38,7 @@ spec:
         app: sleep
         applicationId: "dag01"
         queue: root.default
-        parent: 9
+        parent: "9"
       name: task2
     spec:
       schedulerName: yunikorn
@@ -65,7 +65,7 @@ spec:
         app: sleep
         applicationId: "dag01"
         queue: root.default
-        parent: 11,15,5,9,6
+        parent: "6"
       name: task3
     spec:
       schedulerName: yunikorn
@@ -92,7 +92,7 @@ spec:
         app: sleep
         applicationId: "dag01"
         queue: root.default
-        parent: 10,7,14,8,10
+        parent: "10"
       name: task4
     spec:
       schedulerName: yunikorn
@@ -119,7 +119,7 @@ spec:
         app: sleep
         applicationId: "dag01"
         queue: root.default
-        parent: 1
+        parent: "6-7"
       name: task5
     spec:
       schedulerName: yunikorn
@@ -146,7 +146,7 @@ spec:
         app: sleep
         applicationId: "dag01"
         queue: root.default
-        parent: 13
+        parent: "7-5"
       name: task6
     spec:
       schedulerName: yunikorn
@@ -173,7 +173,7 @@ spec:
         app: sleep
         applicationId: "dag01"
         queue: root.default
-        parent: 10,14
+        parent: "5-4"
       name: task7
     spec:
       schedulerName: yunikorn
@@ -200,7 +200,7 @@ spec:
         app: sleep
         applicationId: "dag01"
         queue: root.default
-        parent: 9
+        parent: "7"
       name: task8
     spec:
       schedulerName: yunikorn
@@ -227,7 +227,7 @@ spec:
         app: sleep
         applicationId: "dag01"
         queue: root.default
-        parent: 11,4,15,6
+        parent: "4"
       name: task9
     spec:
       schedulerName: yunikorn
@@ -254,143 +254,8 @@ spec:
         app: sleep
         applicationId: "dag01"
         queue: root.default
-        parent: 9,8
+        parent: "4-5"
       name: task10
-    spec:
-      schedulerName: yunikorn
-      restartPolicy: Never
-      containers:
-        - name: sleep300
-          image: "alpine:latest"
-          command: ["sleep", "300"]
-          resources:
-            requests:
-              cpu: "100m"
-              memory: "2000M"
----
-apiVersion: batch/v1
-kind: Job
-metadata:
-  name: task11
-spec:
-  completions: 1
-  parallelism: 1
-  template:
-    metadata:
-      labels:
-        app: sleep
-        applicationId: "dag01"
-        queue: root.default
-        parent: 12,8,6,9
-      name: task11
-    spec:
-      schedulerName: yunikorn
-      restartPolicy: Never
-      containers:
-        - name: sleep300
-          image: "alpine:latest"
-          command: ["sleep", "300"]
-          resources:
-            requests:
-              cpu: "100m"
-              memory: "2000M"
----
-apiVersion: batch/v1
-kind: Job
-metadata:
-  name: task12
-spec:
-  completions: 1
-  parallelism: 1
-  template:
-    metadata:
-      labels:
-        app: sleep
-        applicationId: "dag01"
-        queue: root.default
-        parent: 15,11,4,7
-      name: task12
-    spec:
-      schedulerName: yunikorn
-      restartPolicy: Never
-      containers:
-        - name: sleep300
-          image: "alpine:latest"
-          command: ["sleep", "300"]
-          resources:
-            requests:
-              cpu: "100m"
-              memory: "2000M"
----
-apiVersion: batch/v1
-kind: Job
-metadata:
-  name: task13
-spec:
-  completions: 1
-  parallelism: 1
-  template:
-    metadata:
-      labels:
-        app: sleep
-        applicationId: "dag01"
-        queue: root.default
-        parent: 5,9,10,15
-      name: task13
-    spec:
-      schedulerName: yunikorn
-      restartPolicy: Never
-      containers:
-        - name: sleep300
-          image: "alpine:latest"
-          command: ["sleep", "300"]
-          resources:
-            requests:
-              cpu: "100m"
-              memory: "2000M"
----
-apiVersion: batch/v1
-kind: Job
-metadata:
-  name: task14
-spec:
-  completions: 1
-  parallelism: 1
-  template:
-    metadata:
-      labels:
-        app: sleep
-        applicationId: "dag01"
-        queue: root.default
-        parent: 15,10,1
-      name: task14
-    spec:
-      schedulerName: yunikorn
-      restartPolicy: Never
-      containers:
-        - name: sleep300
-          image: "alpine:latest"
-          command: ["sleep", "300"]
-          resources:
-            requests:
-              cpu: "100m"
-              memory: "2000M"
----
-apiVersion: batch/v1
-kind: Job
-metadata:
-  name: task15
-spec:
-  completions: 1
-  parallelism: 1
-  template:
-    metadata:
-      labels:
-        app: sleep
-        applicationId: "dag01"
-        queue: root.default
-        parent: 12,3,2,3,12
-      name: task15
     spec:
       schedulerName: yunikorn
       restartPolicy: Never

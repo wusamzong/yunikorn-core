@@ -1,5 +1,4 @@
-package drheft
-
+package custom
 import (
 	"io/ioutil"
 	"log"
@@ -48,7 +47,7 @@ var (
 	}
 )
 
-func loadAppConfig() AppConfig {
+func LoadAppConfig() AppConfig {
 	yamlFile, err := ioutil.ReadFile(configFile["app"])
 	if err != nil {
 		log.Fatalf("Error reading YAML file: %v", err)
@@ -63,7 +62,7 @@ func loadAppConfig() AppConfig {
 	return config
 }
 
-func loadTaskConfig() TasksConfig {
+func LoadTaskConfig() TasksConfig {
 	yamlFile, err := ioutil.ReadFile(configFile["task"])
 	if err != nil {
 		log.Fatalf("Error reading YAML file: %v", err)
@@ -78,7 +77,7 @@ func loadTaskConfig() TasksConfig {
 	return config
 }
 
-func loadNodeConfig() NodesConfig {
+func LoadNodeConfig() NodesConfig {
 	yamlFile, err := ioutil.ReadFile(configFile["node"])
 	if err != nil {
 		log.Fatalf("Error reading YAML file: %v", err)
