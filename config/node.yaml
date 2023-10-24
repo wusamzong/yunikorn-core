@@ -1,0 +1,51 @@
+nodes:
+  - name: worker01
+    links:
+    - name: worker02
+      bandwidth: 50
+    - name: worker03
+      bandwidth: 30
+    - name: worker04
+      bandwidth: 20
+    - name: worker05
+      bandwidth: 50
+  - name: worker02
+    links: 
+    - name: worker01
+      bandwidth: 50
+    - name: worker03
+      bandwidth: 30
+    - name: worker04
+      bandwidth: 20
+    - name: worker05
+      bandwidth: 70
+  - name: worker03
+    links: 
+    - name: worker01
+      bandwidth: 30
+    - name: worker02
+      bandwidth: 30
+    - name: worker04
+      bandwidth: 20
+    - name: worker05
+      bandwidth: 30
+  - name: worker04
+    links: 
+    - name: worker01
+      bandwidth: 20
+    - name: worker02
+      bandwidth: 20
+    - name: worker03
+      bandwidth: 20
+    - name: worker05
+      bandwidth: 20
+  - name: worker05
+    links:
+    - name: worker01
+      bandwidth: 50
+    - name: worker02
+      bandwidth: 70
+    - name: worker03
+      bandwidth: 30
+    - name: worker04
+      bandwidth: 20

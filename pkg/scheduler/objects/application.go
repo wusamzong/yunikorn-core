@@ -948,6 +948,14 @@ func (sa *Application) tryAllocate(headRoom *resources.Resource, preemptionDelay
 	if sa.sortedRequests == nil {
 		return nil
 	}
+	if isDagApp(sa) {
+		if allRequestWaiting(sa){
+			return nil
+		}else{
+			return nil
+		}
+	}
+
 	// calculate the users' headroom, includes group check which requires the applicationID
 	userHeadroom := ugm.GetUserManager().Headroom(sa.queuePath, sa.ApplicationID, sa.user)
 	// get all the requests from the app sorted in order
