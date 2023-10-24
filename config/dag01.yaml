@@ -11,6 +11,8 @@ spec:
         app: sleep
         applicationId: "dag01"
         queue: root.default
+        parent: 
+      name: task1
     spec:
       schedulerName: yunikorn
       restartPolicy: Never
@@ -36,6 +38,8 @@ spec:
         app: sleep
         applicationId: "dag01"
         queue: root.default
+        parent: 9
+      name: task2
     spec:
       schedulerName: yunikorn
       restartPolicy: Never
@@ -61,6 +65,8 @@ spec:
         app: sleep
         applicationId: "dag01"
         queue: root.default
+        parent: 11,15,5,9,6
+      name: task3
     spec:
       schedulerName: yunikorn
       restartPolicy: Never
@@ -86,6 +92,8 @@ spec:
         app: sleep
         applicationId: "dag01"
         queue: root.default
+        parent: 10,7,14,8,10
+      name: task4
     spec:
       schedulerName: yunikorn
       restartPolicy: Never
@@ -111,6 +119,8 @@ spec:
         app: sleep
         applicationId: "dag01"
         queue: root.default
+        parent: 1
+      name: task5
     spec:
       schedulerName: yunikorn
       restartPolicy: Never
@@ -136,6 +146,8 @@ spec:
         app: sleep
         applicationId: "dag01"
         queue: root.default
+        parent: 13
+      name: task6
     spec:
       schedulerName: yunikorn
       restartPolicy: Never
@@ -161,6 +173,8 @@ spec:
         app: sleep
         applicationId: "dag01"
         queue: root.default
+        parent: 10,14
+      name: task7
     spec:
       schedulerName: yunikorn
       restartPolicy: Never
@@ -186,6 +200,8 @@ spec:
         app: sleep
         applicationId: "dag01"
         queue: root.default
+        parent: 9
+      name: task8
     spec:
       schedulerName: yunikorn
       restartPolicy: Never
@@ -211,6 +227,8 @@ spec:
         app: sleep
         applicationId: "dag01"
         queue: root.default
+        parent: 11,4,15,6
+      name: task9
     spec:
       schedulerName: yunikorn
       restartPolicy: Never
@@ -236,6 +254,8 @@ spec:
         app: sleep
         applicationId: "dag01"
         queue: root.default
+        parent: 9,8
+      name: task10
     spec:
       schedulerName: yunikorn
       restartPolicy: Never
@@ -261,6 +281,8 @@ spec:
         app: sleep
         applicationId: "dag01"
         queue: root.default
+        parent: 12,8,6,9
+      name: task11
     spec:
       schedulerName: yunikorn
       restartPolicy: Never
@@ -286,6 +308,8 @@ spec:
         app: sleep
         applicationId: "dag01"
         queue: root.default
+        parent: 15,11,4,7
+      name: task12
     spec:
       schedulerName: yunikorn
       restartPolicy: Never
@@ -311,6 +335,8 @@ spec:
         app: sleep
         applicationId: "dag01"
         queue: root.default
+        parent: 5,9,10,15
+      name: task13
     spec:
       schedulerName: yunikorn
       restartPolicy: Never
@@ -336,6 +362,8 @@ spec:
         app: sleep
         applicationId: "dag01"
         queue: root.default
+        parent: 15,10,1
+      name: task14
     spec:
       schedulerName: yunikorn
       restartPolicy: Never
@@ -361,6 +389,8 @@ spec:
         app: sleep
         applicationId: "dag01"
         queue: root.default
+        parent: 12,3,2,3,12
+      name: task15
     spec:
       schedulerName: yunikorn
       restartPolicy: Never
