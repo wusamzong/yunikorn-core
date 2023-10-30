@@ -5,8 +5,9 @@ import (
 )
 
 func TestLoadConfig(t *testing.T) {
+	LoadTestAppConfig()
 	LoadAppConfig()
 	LoadTaskConfig()
 	LoadNodeConfig()
-	
+
 }
