@@ -35,59 +35,60 @@ func TestCalculateJobs(t *testing.T) {
 
 	// If the job is end of DAG then pop it into available Jobs Heap
 	for _, job := range jobsDag.Vectors {
-		if len(job.children) == 0 {
+		if len(job.parent) == 0 {
 			heap.Push(availJobsHeap, job)
 		}
 	}
-	
-	
-	for availJobsHeap.Len() > 0 || len(reserveQueue) > 0{
+
+	for availJobsHeap.Len() > 0 || len(reserveQueue) > 0 {
 		var job *Job
 		for availJobsHeap.Len() > 0 {
 			job = availJobsHeap.Pop().(*Job)
-			if _, exist:=scheduledJob[job]; exist{
+			if _, exist := scheduledJob[job]; exist {
 				continue
 			}
-			done:=job.decideNode(nodes, bw)
-			if done{
+			done := job.decideNode(nodes, bw)
+			if done {
 				allocManager.allocate(job)
-				scheduledJob[job]=append(scheduledJob[job],true)
-				for _, parent := range job.parent {
-					if _, exist:=scheduledJob[parent]; !exist{
-						heap.Push(availJobsHeap, parent)
+				scheduledJob[job] = append(scheduledJob[job], true)
+				for _, child := range job.children {
+					_, exist := scheduledJob[child]
+					if child.allParentScheduled(scheduledJob) && !exist {
+						heap.Push(availJobsHeap, child)
 					}
 				}
-			}else{
-				reserveQueue=append(reserveQueue, job)
+			} else {
+				reserveQueue = append(reserveQueue, job)
 			}
 		}
-		
-		for len(reserveQueue) > 0{
+
+		for len(reserveQueue) > 0 {
 			allocManager.nextInterval()
-			fmt.Println("updateCurrent time",allocManager.current)
-			releaseAlloc:=allocManager.releaseResource()
+			fmt.Println("updateCurrent time", allocManager.current)
+			releaseAlloc := allocManager.releaseResource()
 			fmt.Println("release", releaseAlloc)
 			job = reserveQueue[0]
 			reserveQueue = reserveQueue[1:]
-			if _, exist:=scheduledJob[job]; exist{
+			if _, exist := scheduledJob[job]; exist {
 				continue
 			}
-			done:=job.decideNode(nodes, bw)
-			if done{
+			done := job.decideNode(nodes, bw)
+			if done {
 				allocManager.allocate(job)
-				scheduledJob[job]=append(scheduledJob[job],true)
-				for _, parent := range job.parent {
-					if _, exist:=scheduledJob[parent]; !exist{
-						heap.Push(availJobsHeap, parent)
+				scheduledJob[job] = append(scheduledJob[job], true)
+				for _, child := range job.children {
+					_, exist := scheduledJob[child]
+					if child.allParentScheduled(scheduledJob) && !exist {
+						heap.Push(availJobsHeap, child)
 					}
 				}
-			}else{
-				reserveQueue=append(reserveQueue, job)
+			} else {
+				reserveQueue = append(reserveQueue, job)
 
 				if len(allocManager.allocations) == 0 {
-					fmt.Println("There is no enough space for job",job.ID)
-					fmt.Println("Job",job)
-					for _, node := range nodes{
+					fmt.Println("There is no enough space for job", job.ID)
+					fmt.Println("Job", job)
+					for _, node := range nodes {
 						fmt.Printf("nodeId:%d, capacity:{%d, %d}, allocated:{%d, %d}\n", node.ID, node.cpu, node.mem, node.allocatedCpu, node.allocatedMem)
 					}
 					return
@@ -95,7 +96,7 @@ func TestCalculateJobs(t *testing.T) {
 			}
 		}
 	}
-	
+
 	fmt.Println("makespan =", allocManager.getMakespan())
 }
 
@@ -105,7 +106,6 @@ func TestCalculateLastJob(t *testing.T) {
 
 	nodes, bw := createRandNode()
 	jobsDag := createRandJobDAG()
-
 
 	job := jobsDag.Vectors[11]
 	for idx, replica := range job.replicas {

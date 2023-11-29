@@ -1,8 +1,8 @@
 package objects
 
 import (
-	"math"
 	"fmt"
+	"math"
 )
 
 type JobsDAG struct {
@@ -22,9 +22,9 @@ type Job struct {
 }
 
 type replica struct {
-	ID      int
-	node    *node
-	actions []*action
+	ID            int
+	node          *node
+	actions       []*action
 	finalDataSize map[*Job]float64
 	// node selected result
 	minTime  float64
@@ -67,8 +67,18 @@ func (j *Job) createReplica() *replica {
 	return r
 }
 
-func (job *Job) decideNode(nodes []*node, bw *bandwidth) bool{
-	job.makespan=0
+func (job *Job) allParentScheduled(scheduledJob map[*Job][]bool) bool {
+	allScheduled := true
+	for _, parent := range job.parent {
+		if _, exist := scheduledJob[parent]; !exist {
+			allScheduled = false
+		}
+	}
+	return allScheduled
+}
+
+func (job *Job) decideNode(nodes []*node, bw *bandwidth) bool {
+	job.makespan = 0
 	allocatedReplica := []*replica{}
 	for idx, replica := range job.replicas {
 		replica.minValue = math.MaxFloat64
@@ -107,11 +117,11 @@ func (job *Job) decideNode(nodes []*node, bw *bandwidth) bool{
 			// transmission time "between" the Jobs
 			var transmissionTime float64
 			transmissionTime = 0
-			for _, child := range job.children{
-				for _, childReplica := range child.replicas{
-					to := childReplica.node
-					from := node
-					datasize := replica.finalDataSize[child]
+			for _, parent := range job.parent {
+				for _, parentReplica := range parent.replicas {
+					from := parentReplica.node
+					to := node
+					datasize := parentReplica.finalDataSize[job]
 					var curTransmissionTime float64
 					if bw.values[from][to] == 0 {
 						curTransmissionTime = 0
@@ -149,14 +159,14 @@ func (job *Job) decideNode(nodes []*node, bw *bandwidth) bool{
 				replica.minTime = time
 				replica.minDr = dr
 				// replica.minValue = math.Pow(time, 2) + math.Pow(dr, 2)
-				replica.minValue = time*dr
+				replica.minValue = time * dr
 				replica.node = node
 			}
 		}
-		if replica.node == nil{
-			fmt.Println("no enough node for job",job.ID,"'s replica",idx)
+		if replica.node == nil {
+			fmt.Println("no enough node for job", job.ID, "'s replica", idx)
 			fmt.Println("release allocated Replica")
-			for _, replica := range allocatedReplica{
+			for _, replica := range allocatedReplica {
 				replica.node.allocatedCpu -= job.replicaCpu
 				replica.node.allocatedMem -= job.replicaMem
 			}
@@ -165,8 +175,8 @@ func (job *Job) decideNode(nodes []*node, bw *bandwidth) bool{
 		allocatedReplica = append(allocatedReplica, replica)
 		replica.node.allocatedCpu += job.replicaCpu
 		replica.node.allocatedMem += job.replicaMem
-		
-		if replica.minTime>job.makespan{
+
+		if replica.minTime > job.makespan {
 			job.makespan = replica.minTime
 		}
 	}
@@ -186,4 +196,3 @@ func (r *replica) createAction(exeTime float64) *action {
 	r.actions = append(r.actions, a)
 	return a
 }
-
