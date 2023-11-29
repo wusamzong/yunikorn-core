@@ -1,0 +1,47 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: curl
+  namespace: default
+spec:
+  containers:
+  - name: curl
+    image: curlimages/curl
+    command:
+      - /bin/sh
+      - -c
+      - |
+        APISERVER=https://kubernetes.default.svc
+        SERVICEACCOUNT=/var/run/secrets/kubernetes.io/serviceaccount
+        NAMESPACE=$(cat ${SERVICEACCOUNT}/namespace)
+        TOKEN=$(cat ${SERVICEACCOUNT}/token)
+        CACERT=${SERVICEACCOUNT}/ca.crt
+        curl --cacert ${CACERT} --header "Authorization: Bearer ${TOKEN}" -X GET ${APISERVER}/api/v1/namespaces/default/pods
+        sleep infinity
+    imagePullPolicy: IfNotPresent
+  restartPolicy: Always
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  namespace: default
+  name: pod-reader
+rules:
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: pod-reader-binding
+  namespace: default
+subjects:
+- kind: ServiceAccount
+  name: default 
+  namespace: default
+roleRef:
+  kind: Role
+  name: pod-reader
+  apiGroup: rbac.authorization.k8s.io
+---

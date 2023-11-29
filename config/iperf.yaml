@@ -1,0 +1,58 @@
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+    name: task01
+spec:
+    completions: 1
+    parallelism: 1
+    template:
+        metadata:
+            labels:
+                app: sleep
+                applicationId: dag01
+                queue: root.default
+                children: 34-36-45-48
+            name: task01
+        spec:
+            schedulerName: yunikorn
+            restartPolicy: Never
+            containers:
+                - name: sleep300
+                  image: clearlinux/iperf:latest
+                  command:
+                    - sleep
+                    - "9999999999"
+                  resources:
+                    requests:
+                        cpu: 100m
+                        memory: 2000M
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+    name: task02
+spec:
+    completions: 1
+    parallelism: 1
+    template:
+        metadata:
+            labels:
+                app: sleep
+                applicationId: dag01
+                queue: root.default
+                children: 34-36-45-48
+            name: task02
+        spec:
+            schedulerName: yunikorn
+            restartPolicy: Never
+            containers:
+                - name: sleep300
+                  image: clearlinux/iperf:latest
+                  command:
+                    - sleep
+                    - "9999999999"
+                  resources:
+                    requests:
+                        cpu: 100m
+                        memory: 2000M

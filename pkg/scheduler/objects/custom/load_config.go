@@ -4,7 +4,8 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
-	"strconv"
+
+	// "strconv"
 
 	"gopkg.in/yaml.v3"
 )
@@ -69,10 +70,10 @@ func LoadTestAppConfig() AppConfig {
 	return config
 }
 
-func GetEdgeDataSize(config AppConfig, from, to string)float64{
-	for _, dependency := range config.Dependency{
-		if dependency.Idx == fmt.Sprintf("%s-%s", from, to){
-			return float64(dependency.Weight) 
+func GetEdgeDataSize(config AppConfig, from, to string) float64 {
+	for _, dependency := range config.Dependency {
+		if dependency.Idx == fmt.Sprintf("%s-%s", from, to) {
+			return float64(dependency.Weight)
 		}
 	}
 	return 0.0

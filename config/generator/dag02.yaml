@@ -1,0 +1,624 @@
+---
+apiVersion: v1
+kind: Pod
+metadata:
+    name: task4
+    labels:
+        app: sleep
+        applicationId: dag01
+        queue: root.default
+        children: 13-33
+        executionTime: "120"
+spec:
+    containers:
+        - name: sleep300
+          image: alpine:latest
+          command:
+            - sleep
+            - "30"
+          resources:
+            requests:
+                cpu: 200m
+                memory: 300M
+    tolerations:
+        - key: kwok.x-k8s.io/node
+          operator: Exists
+          effect: NoSchedule
+---
+apiVersion: v1
+kind: Pod
+metadata:
+    name: task0
+    labels:
+        app: sleep
+        applicationId: dag01
+        queue: root.default
+        children: 19-27-30
+        executionTime: "240"
+spec:
+    containers:
+        - name: sleep300
+          image: alpine:latest
+          command:
+            - sleep
+            - "30"
+          resources:
+            requests:
+                cpu: 1100m
+                memory: 500M
+    tolerations:
+        - key: kwok.x-k8s.io/node
+          operator: Exists
+          effect: NoSchedule
+---
+apiVersion: v1
+kind: Pod
+metadata:
+    name: task18
+    labels:
+        app: sleep
+        applicationId: dag01
+        queue: root.default
+        children: 22-25
+        executionTime: "210"
+spec:
+    containers:
+        - name: sleep300
+          image: alpine:latest
+          command:
+            - sleep
+            - "30"
+          resources:
+            requests:
+                cpu: 200m
+                memory: 200M
+    tolerations:
+        - key: kwok.x-k8s.io/node
+          operator: Exists
+          effect: NoSchedule
+---
+apiVersion: v1
+kind: Pod
+metadata:
+    name: task1
+    labels:
+        app: sleep
+        applicationId: dag01
+        queue: root.default
+        children: 15-20-24-32-33-34-36
+        executionTime: "270"
+spec:
+    containers:
+        - name: sleep300
+          image: alpine:latest
+          command:
+            - sleep
+            - "30"
+          resources:
+            requests:
+                cpu: 900m
+                memory: 600M
+    tolerations:
+        - key: kwok.x-k8s.io/node
+          operator: Exists
+          effect: NoSchedule
+---
+apiVersion: v1
+kind: Pod
+metadata:
+    name: task3
+    labels:
+        app: sleep
+        applicationId: dag01
+        queue: root.default
+        children: 25-26-34-35
+        executionTime: "30"
+spec:
+    containers:
+        - name: sleep300
+          image: alpine:latest
+          command:
+            - sleep
+            - "30"
+          resources:
+            requests:
+                cpu: 1100m
+                memory: 900M
+    tolerations:
+        - key: kwok.x-k8s.io/node
+          operator: Exists
+          effect: NoSchedule
+---
+apiVersion: v1
+kind: Pod
+metadata:
+    name: task12
+    labels:
+        app: sleep
+        applicationId: dag01
+        queue: root.default
+        children: 27-33-34
+        executionTime: "270"
+spec:
+    containers:
+        - name: sleep300
+          image: alpine:latest
+          command:
+            - sleep
+            - "30"
+          resources:
+            requests:
+                cpu: 700m
+                memory: 600M
+    tolerations:
+        - key: kwok.x-k8s.io/node
+          operator: Exists
+          effect: NoSchedule
+---
+apiVersion: v1
+kind: Pod
+metadata:
+    name: task7
+    labels:
+        app: sleep
+        applicationId: dag01
+        queue: root.default
+        children: 26-30
+        executionTime: "120"
+spec:
+    containers:
+        - name: sleep300
+          image: alpine:latest
+          command:
+            - sleep
+            - "30"
+          resources:
+            requests:
+                cpu: 400m
+                memory: 600M
+    tolerations:
+        - key: kwok.x-k8s.io/node
+          operator: Exists
+          effect: NoSchedule
+---
+apiVersion: v1
+kind: Pod
+metadata:
+    name: task14
+    labels:
+        app: sleep
+        applicationId: dag01
+        queue: root.default
+        children: 26-27
+        executionTime: "180"
+spec:
+    containers:
+        - name: sleep300
+          image: alpine:latest
+          command:
+            - sleep
+            - "30"
+          resources:
+            requests:
+                cpu: 1000m
+                memory: 600M
+    tolerations:
+        - key: kwok.x-k8s.io/node
+          operator: Exists
+          effect: NoSchedule
+---
+apiVersion: v1
+kind: Pod
+metadata:
+    name: task26
+    labels:
+        app: sleep
+        applicationId: dag01
+        queue: root.default
+        children: 32-33
+        executionTime: "60"
+spec:
+    containers:
+        - name: sleep300
+          image: alpine:latest
+          command:
+            - sleep
+            - "30"
+          resources:
+            requests:
+                cpu: 300m
+                memory: 500M
+    tolerations:
+        - key: kwok.x-k8s.io/node
+          operator: Exists
+          effect: NoSchedule
+---
+apiVersion: v1
+kind: Pod
+metadata:
+    name: task5
+    labels:
+        app: sleep
+        applicationId: dag01
+        queue: root.default
+        children: 12-16
+        executionTime: "60"
+spec:
+    containers:
+        - name: sleep300
+          image: alpine:latest
+          command:
+            - sleep
+            - "30"
+          resources:
+            requests:
+                cpu: 1000m
+                memory: 800M
+    tolerations:
+        - key: kwok.x-k8s.io/node
+          operator: Exists
+          effect: NoSchedule
+---
+apiVersion: v1
+kind: Pod
+metadata:
+    name: task10
+    labels:
+        app: sleep
+        applicationId: dag01
+        queue: root.default
+        children: 12-14-18-22-31
+        executionTime: "210"
+spec:
+    containers:
+        - name: sleep300
+          image: alpine:latest
+          command:
+            - sleep
+            - "30"
+          resources:
+            requests:
+                cpu: 800m
+                memory: 800M
+    tolerations:
+        - key: kwok.x-k8s.io/node
+          operator: Exists
+          effect: NoSchedule
+---
+apiVersion: v1
+kind: Pod
+metadata:
+    name: task8
+    labels:
+        app: sleep
+        applicationId: dag01
+        queue: root.default
+        children: 22-28
+        executionTime: "300"
+spec:
+    containers:
+        - name: sleep300
+          image: alpine:latest
+          command:
+            - sleep
+            - "30"
+          resources:
+            requests:
+                cpu: 500m
+                memory: 200M
+    tolerations:
+        - key: kwok.x-k8s.io/node
+          operator: Exists
+          effect: NoSchedule
+---
+apiVersion: v1
+kind: Pod
+metadata:
+    name: task19
+    labels:
+        app: sleep
+        applicationId: dag01
+        queue: root.default
+        children: 22-32-33
+        executionTime: "300"
+spec:
+    containers:
+        - name: sleep300
+          image: alpine:latest
+          command:
+            - sleep
+            - "30"
+          resources:
+            requests:
+                cpu: 500m
+                memory: 600M
+    tolerations:
+        - key: kwok.x-k8s.io/node
+          operator: Exists
+          effect: NoSchedule
+---
+apiVersion: v1
+kind: Pod
+metadata:
+    name: task6
+    labels:
+        app: sleep
+        applicationId: dag01
+        queue: root.default
+        children: 29-34
+        executionTime: "270"
+spec:
+    containers:
+        - name: sleep300
+          image: alpine:latest
+          command:
+            - sleep
+            - "30"
+          resources:
+            requests:
+                cpu: 1100m
+                memory: 400M
+    tolerations:
+        - key: kwok.x-k8s.io/node
+          operator: Exists
+          effect: NoSchedule
+---
+apiVersion: v1
+kind: Pod
+metadata:
+    name: task32
+    labels:
+        app: sleep
+        applicationId: dag01
+        queue: root.default
+        children: "36"
+        executionTime: "180"
+spec:
+    containers:
+        - name: sleep300
+          image: alpine:latest
+          command:
+            - sleep
+            - "30"
+          resources:
+            requests:
+                cpu: 1000m
+                memory: 200M
+    tolerations:
+        - key: kwok.x-k8s.io/node
+          operator: Exists
+          effect: NoSchedule
+---
+apiVersion: v1
+kind: Pod
+metadata:
+    name: task21
+    labels:
+        app: sleep
+        applicationId: dag01
+        queue: root.default
+        children: "33"
+        executionTime: "120"
+spec:
+    containers:
+        - name: sleep300
+          image: alpine:latest
+          command:
+            - sleep
+            - "30"
+          resources:
+            requests:
+                cpu: 300m
+                memory: 700M
+    tolerations:
+        - key: kwok.x-k8s.io/node
+          operator: Exists
+          effect: NoSchedule
+---
+apiVersion: v1
+kind: Pod
+metadata:
+    name: task28
+    labels:
+        app: sleep
+        applicationId: dag01
+        queue: root.default
+        children: "30"
+        executionTime: "150"
+spec:
+    containers:
+        - name: sleep300
+          image: alpine:latest
+          command:
+            - sleep
+            - "30"
+          resources:
+            requests:
+                cpu: 200m
+                memory: 1100M
+    tolerations:
+        - key: kwok.x-k8s.io/node
+          operator: Exists
+          effect: NoSchedule
+---
+apiVersion: v1
+kind: Pod
+metadata:
+    name: task13
+    labels:
+        app: sleep
+        applicationId: dag01
+        queue: root.default
+        children: 34-35
+        executionTime: "60"
+spec:
+    containers:
+        - name: sleep300
+          image: alpine:latest
+          command:
+            - sleep
+            - "30"
+          resources:
+            requests:
+                cpu: 700m
+                memory: 600M
+    tolerations:
+        - key: kwok.x-k8s.io/node
+          operator: Exists
+          effect: NoSchedule
+---
+apiVersion: v1
+kind: Pod
+metadata:
+    name: task2
+    labels:
+        app: sleep
+        applicationId: dag01
+        queue: root.default
+        children: 15-17-29-32
+        executionTime: "120"
+spec:
+    containers:
+        - name: sleep300
+          image: alpine:latest
+          command:
+            - sleep
+            - "30"
+          resources:
+            requests:
+                cpu: 900m
+                memory: 900M
+    tolerations:
+        - key: kwok.x-k8s.io/node
+          operator: Exists
+          effect: NoSchedule
+---
+apiVersion: v1
+kind: Pod
+metadata:
+    name: task9
+    labels:
+        app: sleep
+        applicationId: dag01
+        queue: root.default
+        children: 17-19-21-32
+        executionTime: "210"
+spec:
+    containers:
+        - name: sleep300
+          image: alpine:latest
+          command:
+            - sleep
+            - "30"
+          resources:
+            requests:
+                cpu: 1100m
+                memory: 1000M
+    tolerations:
+        - key: kwok.x-k8s.io/node
+          operator: Exists
+          effect: NoSchedule
+---
+apiVersion: v1
+kind: Pod
+metadata:
+    name: task16
+    labels:
+        app: sleep
+        applicationId: dag01
+        queue: root.default
+        children: 22-26-36
+        executionTime: "180"
+spec:
+    containers:
+        - name: sleep300
+          image: alpine:latest
+          command:
+            - sleep
+            - "30"
+          resources:
+            requests:
+                cpu: 800m
+                memory: 600M
+    tolerations:
+        - key: kwok.x-k8s.io/node
+          operator: Exists
+          effect: NoSchedule
+---
+apiVersion: v1
+kind: Pod
+metadata:
+    name: task20
+    labels:
+        app: sleep
+        applicationId: dag01
+        queue: root.default
+        children: 24-32
+        executionTime: "30"
+spec:
+    containers:
+        - name: sleep300
+          image: alpine:latest
+          command:
+            - sleep
+            - "30"
+          resources:
+            requests:
+                cpu: 1100m
+                memory: 1000M
+    tolerations:
+        - key: kwok.x-k8s.io/node
+          operator: Exists
+          effect: NoSchedule
+---
+apiVersion: v1
+kind: Pod
+metadata:
+    name: task24
+    labels:
+        app: sleep
+        applicationId: dag01
+        queue: root.default
+        children: 26-27-28
+        executionTime: "210"
+spec:
+    containers:
+        - name: sleep300
+          image: alpine:latest
+          command:
+            - sleep
+            - "30"
+          resources:
+            requests:
+                cpu: 800m
+                memory: 900M
+    tolerations:
+        - key: kwok.x-k8s.io/node
+          operator: Exists
+          effect: NoSchedule
+---
+apiVersion: v1
+kind: Pod
+metadata:
+    name: task33
+    labels:
+        app: sleep
+        applicationId: dag01
+        queue: root.default
+        children: "36"
+        executionTime: "120"
+spec:
+    containers:
+        - name: sleep300
+          image: alpine:latest
+          command:
+            - sleep
+            - "30"
+          resources:
+            requests:
+                cpu: 300m
+                memory: 900M
+    tolerations:
+        - key: kwok.x-k8s.io/node
+          operator: Exists
+          effect: NoSchedule

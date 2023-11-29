@@ -7,12 +7,12 @@ spec:
   parallelism: 1
   template:
     metadata:
+      name: task1
       labels:
         app: sleep
         applicationId: "dag01"
         queue: root.default
         parent: ""
-      name: task1
     spec:
       schedulerName: yunikorn
       restartPolicy: Never

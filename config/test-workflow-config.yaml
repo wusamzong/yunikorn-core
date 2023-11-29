@@ -1,0 +1,25 @@
+applicationId: dag01
+podcount: 10
+dependency:
+- idx: task1-task2
+  weight: 700
+- idx: task1-task3
+  weight: 400
+- idx: task2-task7
+  weight: 200
+- idx: task2-task5
+  weight: 300
+- idx: task3-task6
+  weight: 500
+- idx: task4-task5
+  weight: 100
+- idx: task5-task6
+  weight: 900
+- idx: task6-task8
+  weight: 700
+- idx: task7-task8
+  weight: 600
+- idx: task8-task9
+  weight: 300
+- idx: task8-task10
+  weight: 900
