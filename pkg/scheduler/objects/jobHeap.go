@@ -3,7 +3,7 @@ package objects
 type JobHeap []*Job
 
 func (h JobHeap) Len() int           { return len(h) }
-func (h JobHeap) Less(i, j int) bool { return h[i].ID < h[j].ID }
+func (h JobHeap) Less(i, j int) bool { return h[i].predictExecutionTime < h[j].predictExecutionTime }
 func (h JobHeap) Swap(i, j int)      { h[i], h[j] = h[j], h[i] }
 
 func (h *JobHeap) Push(x interface{}) {

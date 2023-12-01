@@ -67,31 +67,33 @@ func TestCalculateJobs(t *testing.T) {
 			fmt.Println("updateCurrent time", allocManager.current)
 			releaseAlloc := allocManager.releaseResource()
 			fmt.Println("release", releaseAlloc)
-			job = reserveQueue[0]
-			reserveQueue = reserveQueue[1:]
-			if _, exist := scheduledJob[job]; exist {
-				continue
-			}
-			done := job.decideNode(nodes, bw)
-			if done {
-				allocManager.allocate(job)
-				scheduledJob[job] = append(scheduledJob[job], true)
-				for _, child := range job.children {
-					_, exist := scheduledJob[child]
-					if child.allParentScheduled(scheduledJob) && !exist {
-						heap.Push(availJobsHeap, child)
-					}
-				}
-			} else {
-				reserveQueue = append(reserveQueue, job)
 
-				if len(allocManager.allocations) == 0 {
-					fmt.Println("There is no enough space for job", job.ID)
-					fmt.Println("Job", job)
-					for _, node := range nodes {
-						fmt.Printf("nodeId:%d, capacity:{%d, %d}, allocated:{%d, %d}\n", node.ID, node.cpu, node.mem, node.allocatedCpu, node.allocatedMem)
+			for i:=0 ;i<len(reserveQueue);i++{
+				job = reserveQueue[0]
+				reserveQueue = reserveQueue[1:]
+				if _, exist := scheduledJob[job]; exist {
+					continue
+				}
+				done := job.decideNode(nodes, bw)
+				if done {
+					allocManager.allocate(job)
+					scheduledJob[job] = append(scheduledJob[job], true)
+					for _, child := range job.children {
+						_, exist := scheduledJob[child]
+						if child.allParentScheduled(scheduledJob) && !exist {
+							heap.Push(availJobsHeap, child)
+						}
 					}
-					return
+				}else{
+					reserveQueue = append(reserveQueue, job)
+					if len(allocManager.allocations) == 0 {
+						fmt.Println("There is no enough space for job", job.ID)
+						fmt.Println("Job", job)
+						for _, node := range nodes {
+							fmt.Printf("nodeId:%d, capacity:{%d, %d}, allocated:{%d, %d}\n", node.ID, node.cpu, node.mem, node.allocatedCpu, node.allocatedMem)
+						}
+						return
+					}
 				}
 			}
 		}
@@ -161,7 +163,8 @@ func TestCalculateLastJob(t *testing.T) {
 			if time*dr < replica.minValue {
 				replica.minTime = time
 				replica.minDr = dr
-				replica.minValue = math.Pow(time, 2) + math.Pow(dr, 2)
+				// replica.minValue = math.Pow(time, 2) + math.Pow(dr, 2)
+				replica.minValue = time * dr
 				replica.node = node
 			}
 
@@ -191,6 +194,7 @@ func createRandJobDAG() *JobsDAG {
 			children:   []*Job{},
 		}
 		createRandReplica(job)
+		job.predictTime()
 		jobsDAG.Vectors = append(jobsDAG.Vectors, job)
 	}
 

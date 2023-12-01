@@ -15,6 +15,7 @@ type Job struct {
 	replicaCpu int
 	replicaMem int
 	actionNum  int
+	predictExecutionTime float64
 	makespan   float64
 	replicas   []*replica
 	children   []*Job
@@ -160,12 +161,12 @@ func (job *Job) decideNode(nodes []*node, bw *bandwidth) bool {
 				replica.minDr = dr
 				// replica.minValue = math.Pow(time, 2) + math.Pow(dr, 2)
 				replica.minValue = time * dr
+				// replica.minValue = time
 				replica.node = node
 			}
 		}
 		if replica.node == nil {
 			fmt.Println("no enough node for job", job.ID, "'s replica", idx)
-			fmt.Println("release allocated Replica")
 			for _, replica := range allocatedReplica {
 				replica.node.allocatedCpu -= job.replicaCpu
 				replica.node.allocatedMem -= job.replicaMem
@@ -195,4 +196,24 @@ func (r *replica) createAction(exeTime float64) *action {
 	}
 	r.actions = append(r.actions, a)
 	return a
+}
+
+func (j *Job) predictTime(){
+	j.predictExecutionTime = 0
+	for _, replica := range j.replicas{
+		var maxTime float64=0
+		var maxSize float64=0
+		for _, action := range replica.actions{
+			if action.executionTime > maxTime{
+				maxTime = action.executionTime
+			}
+			
+			for _, datasize := range action.datasize{
+				if datasize > maxSize{
+					maxSize = datasize
+				}
+			}
+		}
+		j.predictExecutionTime += (maxTime+maxSize)
+	}
 }
