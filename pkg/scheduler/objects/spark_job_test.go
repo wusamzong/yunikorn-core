@@ -24,7 +24,8 @@ func TestCalculateJobs(t *testing.T) {
 	rand.Seed(randomSeed)
 
 	nodes, bw := createRandNode()
-	jobsDag := createRandJobDAG()
+	// jobsDag := createRandJobDAG()
+	jobsDag := generateRandomDAG()
 	allocManager := intervalAllocManager{current: 0}
 
 	availJobsHeap := &JobHeap{}
@@ -220,39 +221,36 @@ func createRandJobDAG() *JobsDAG {
 	return &jobsDAG
 }
 
-func ChildToParent(jobsDAG *JobsDAG) *JobsDAG {
-	vectors := jobsDAG.Vectors
-	for _, parent := range vectors {
-		for _, child := range parent.children {
-			child.parent = append(child.parent, parent)
-		}
-	}
-	return jobsDAG
-}
+// func ChildToParent(jobsDAG *JobsDAG) *JobsDAG {
+// 	vectors := jobsDAG.Vectors
+// 	for _, parent := range vectors {
+// 		for _, child := range parent.children {
+// 			child.parent = append(child.parent, parent)
+// 		}
+// 	}
+// 	return jobsDAG
+// }
 
-func createRandReplica(j *Job) {
-	for i := 0; i < j.replicaNum; i++ {
-		j.createReplica()
-	}
-
-	for i := 0; i < j.actionNum; i++ {
-		randExecutionTime := rand.Float64() * 1000
-		for _, r := range j.replicas {
-			a := r.createAction(randExecutionTime)
-			for _, r := range j.replicas {
-				a.datasize[r] = rand.Float64() * 1000
-			}
-		}
-	}
-
-	for _, r := range j.replicas {
-		for _, child := range j.children {
-			r.finalDataSize[child] = rand.Float64() * 1000
-		}
-
-		// Log(fmt.Sprintf("replica:%d", i), r)
-	}
-}
+// func createRandReplica(j *Job) {
+// 	for i := 0; i < j.replicaNum; i++ {
+// 		j.createReplica()
+// 	}
+// 	for i := 0; i < j.actionNum; i++ {
+// 		randExecutionTime := rand.Float64() * 1000
+// 		for _, r := range j.replicas {
+// 			a := r.createAction(randExecutionTime)
+// 			for _, r := range j.replicas {
+// 				a.datasize[r] = rand.Float64() * 1000
+// 			}
+// 		}
+// 	}
+// 	for _, r := range j.replicas {
+// 		for _, child := range j.children {
+// 			r.finalDataSize[child] = rand.Float64() * 1000
+// 		}
+// 		// Log(fmt.Sprintf("replica:%d", i), r)
+// 	}
+// }
 
 func Log(describe string, a any) {
 	fmt.Println(describe+":", a)
