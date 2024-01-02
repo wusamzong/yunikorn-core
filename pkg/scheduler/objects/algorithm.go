@@ -5,7 +5,7 @@ package objects
 // )
 
 type optimizeStrategy interface {
-	optimized(vectors map[string]*Vector) error
+	optimized(j *JobsDAG) error
 }
 
 type HEFT struct {
@@ -62,12 +62,12 @@ var (
 	}
 )
 
-func (a *HEFT) optimized(vectors map[string]*Vector) error {
+func (a *HEFT) optimized(j *JobsDAG) error {
 
 	return nil
 }
 
-func (a *DRHEFT) optimized(vectors map[string]*Vector) error {
+func (a *DRHEFT) optimized(j *JobsDAG) error {
 
 	return nil
 }

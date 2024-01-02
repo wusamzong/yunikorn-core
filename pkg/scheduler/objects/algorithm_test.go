@@ -11,10 +11,6 @@ import (
 )
 
 func CreateTestGraph() map[string]*Vector {
-	// show execution time
-	// start := time.Now()
-	// defer fmt.Println(time.Now().Sub(start))
-
 	config := custom.LoadTestAppConfig()
 	app1 := newApplicationWithTags(config.ApplicationID, "default", "root.default", nil)
 	dependency := []string{"2-3", "5-7", "6", "5", "6", "8", "8", "9-10", "", ""} // 10, 9, 8....1
@@ -34,18 +30,17 @@ func CreateTestGraph() map[string]*Vector {
 }
 
 func TestHEFTOptimized(t *testing.T) {
-
-	v := map[string]*Vector{}
+	v := &JobsDAG{}
 	h := &HEFT{}
+	
 	h.optimized(v)
 }
 
 func TestDRHEFTOptimized(t *testing.T) {
-	v := map[string]*Vector{}
+	v := &JobsDAG{}
 	d := &DRHEFT{}
 	_ = CreateFakeNode()
 	d.optimized(v)
-
 }
 
 // func TestTryDRHEFT(t *testing.T) {
@@ -53,7 +48,6 @@ func TestDRHEFTOptimized(t *testing.T) {
 // 	// d := &DRHEFT{}
 // 	iterator := CreateFakeNode().GetNodeIterator()
 // 	isPassed := []*Vector{}
-
 // 	for _, vector := range v {
 // 		if isExist(isPassed, vector) {
 // 			continue
@@ -61,7 +55,6 @@ func TestDRHEFTOptimized(t *testing.T) {
 // 		TryNodes(vector, isPassed, iterator)
 // 	}
 // }
-
 // func TryNodes(v *Vector, isPassed []*Vector, iterator NodeIterator){
 // 	var minmum_result float64
 // 	var selectNode string
@@ -78,7 +71,6 @@ func TestDRHEFTOptimized(t *testing.T) {
 // 		dr_share := calculateDrShare(node.GetAvailableResource() , res)
 // 		// get execution time
 // 		executionTime_value:=v.executionTime*nodeComputingSpeed[node.NodeID]
-
 // 		if len(v.children)!=0 {
 // 			var maximum_transmission_cost float64
 // 			maximum_transmission_cost = 0
@@ -91,12 +83,9 @@ func TestDRHEFTOptimized(t *testing.T) {
 // 				node_from := node.NodeID
 // 				node_to := child.instance.GetRequiredNode()
 // 				bandWidth:=nodeBandWidth.links[node_from][node_to]
-
 // 				task_from := v.instance.taskName
 // 				task_to := child.instance.taskName
-
 // 				dataSize:=GetEdgeDataSize(LoadTestAppConfig(), task_from, task_to)
-
 // 				transmission_cost := bandWidth/dataSize
 // 				if maximum_transmission_cost < transmission_cost{
 // 					maximum_transmission_cost = transmission_cost
@@ -104,7 +93,6 @@ func TestDRHEFTOptimized(t *testing.T) {
 // 			}
 // 			executionTime_value += maximum_transmission_cost
 // 		}
-
 // 		value := dr_share * executionTime_value
 // 		if minmum_result > value{
 // 			minmum_result = value

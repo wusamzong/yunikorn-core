@@ -128,7 +128,7 @@ func createRandReplica(j *Job) {
 
 	for _, r := range j.replicas {
 		for _, child := range j.children {
-			r.finalDataSize[child] = rand.Float64() * 1000
+			r.finalDataSize[child] = rand.Float64() * 10000
 		}
 
 		// Log(fmt.Sprintf("replica:%d", i), r)

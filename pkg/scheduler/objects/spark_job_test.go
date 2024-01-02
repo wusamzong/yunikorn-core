@@ -24,11 +24,17 @@ func TestCalculateJobs(t *testing.T) {
 	rand.Seed(randomSeed)
 
 	nodes, bw := createRandNode()
+	aveExecRate, aveBw := calcAve(nodes, bw)
 	// jobsDag := createRandJobDAG()
 	jobsDag := generateRandomDAG()
 	allocManager := intervalAllocManager{current: 0}
 
-	availJobsHeap := &JobHeap{}
+	availJobsHeap := &JobHeap{
+		averageBandwidth: aveBw,
+		averageExecutionRate: aveExecRate,
+	}
+	// fmt.Println(aveBw)
+	// fmt.Println(aveExecRate)
 	// storage the job has been tried but fail, fifo
 	reserveQueue := []*Job{}
 	scheduledJob := map[*Job][]bool{}
@@ -59,6 +65,14 @@ func TestCalculateJobs(t *testing.T) {
 					}
 				}
 			} else {
+				// Mandatory Prioritization
+				// heap.Push(availJobsHeap, job)
+				// allocManager.nextInterval()
+				// fmt.Println("updateCurrent time", allocManager.current)
+				// releaseAlloc := allocManager.releaseResource()
+				// fmt.Println("release", releaseAlloc)
+				
+				// Allow other job to be allocated if high priority job have no enough resource
 				reserveQueue = append(reserveQueue, job)
 			}
 		}
@@ -178,7 +192,6 @@ func TestCalculateLastJob(t *testing.T) {
 		fmt.Println("Job", job.ID, ",replica", idx, ",nodeID:", replica.node.ID,
 			",minTime:", replica.minTime, ",min DR:", replica.minDr, ",minValue:", replica.minValue)
 	}
-
 }
 
 func createRandJobDAG() *JobsDAG {
@@ -304,3 +317,27 @@ func createRandNode() ([]*node, *bandwidth) {
 	return nodes, bw
 
 }
+
+func calcAve(nodes []*node, bw *bandwidth)(float64, float64){
+	sum:=0.0
+	count:=len(nodes)
+	for _, node:= range nodes{
+		sum+=node.executionRate
+	}
+	avgExecutionRage:=sum/float64(count)
+
+	edgeCount:=0.0
+	edgeSum:=0.0
+	for i:=0;i<len(nodes)-1;i++{
+		for j:=i+1;j<len(nodes);j++{
+			from:= nodes[i]
+			to:=nodes[j]
+			edgeCount+=1.0
+			edgeSum+=(*bw).values[from][to]
+		}
+	}
+	avgBandwidth:=edgeSum/edgeCount
+
+	return avgExecutionRage, avgBandwidth
+}
+

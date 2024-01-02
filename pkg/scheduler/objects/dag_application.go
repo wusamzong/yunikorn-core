@@ -119,12 +119,12 @@ func parseChildren(c string) []string {
 	return result
 }
 
-func (dag *DAG) optimized() {
-	heft := &HEFT{}
-	dag.OptimizeStrategy = heft
-	dag.OptimizeStrategy.optimized(dag.vectors)
+func (dag *DAG) optimized(o optimizeStrategy) {
+	// heft := &HEFT{}
+	// dag.OptimizeStrategy = heft
+	// dag.OptimizeStrategy.optimized(dag.vectors)
 
-	drheft := &DRHEFT{}
-	dag.OptimizeStrategy = drheft
-	dag.OptimizeStrategy.optimized(dag.vectors)
+	// drheft := &DRHEFT{}
+	// dag.OptimizeStrategy = drheft
+	// dag.OptimizeStrategy.optimized(dag.vectors)
 }

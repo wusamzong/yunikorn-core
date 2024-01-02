@@ -16,6 +16,7 @@ type Job struct {
 	replicaMem int
 	actionNum  int
 	predictExecutionTime float64
+	pathPriority float64
 	makespan   float64
 	replicas   []*replica
 	children   []*Job
@@ -216,4 +217,51 @@ func (j *Job) predictTime(){
 		}
 		j.predictExecutionTime += (maxTime+maxSize)
 	}
+}
+
+func (job *Job) priority(avgExecution, avgBW float64)float64{
+	if job.pathPriority != 0{
+		return job.pathPriority
+	}
+	// find current job predict execution time
+	replica := *job.replicas[0]
+	var time float64
+
+	// transmission time + Execution time "Inside" the Job
+	for _, action := range replica.actions {
+		var transmissionTime, executionTime float64
+		executionTime = action.executionTime * avgExecution
+		maxDataSize:=0.0
+		for i := 0; i < len(job.replicas); i++ {
+			if maxDataSize<action.datasize[job.replicas[i]]{
+				maxDataSize = action.datasize[job.replicas[i]]
+			}
+		}
+		transmissionTime = maxDataSize/avgBW
+		time += (executionTime + transmissionTime)
+	}
+
+	var transmissionTime float64
+	maxDataSize:=0.0
+	for _, parent := range job.parent {
+		for _, parentReplica := range parent.replicas {
+			if maxDataSize<parentReplica.finalDataSize[job]{
+				maxDataSize = parentReplica.finalDataSize[job]
+			}
+		}
+	}
+	transmissionTime = maxDataSize/avgBW
+	time += transmissionTime
+	job.pathPriority = time
+
+	// find max child path
+	maxPath:=0.0
+	for _, child := range job.children{
+		if maxPath<child.priority(avgExecution, avgBW){
+			maxPath = child.priority(avgExecution, avgBW)
+		}
+	}
+	job.pathPriority+=maxPath
+	fmt.Printf("The path priority of Job %d is %.1f\n", job.ID, job.pathPriority)
+	return job.pathPriority
 }

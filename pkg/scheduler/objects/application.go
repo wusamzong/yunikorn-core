@@ -954,7 +954,7 @@ func (sa *Application) tryAllocate(headRoom *resources.Resource, preemptionDelay
 	if isDagApp(sa) && sa.dag==nil {
 		if allRequestWaiting(sa){
 			sa.dag=CreateDagManager(sa, true)
-			sa.dag.optimized()
+			// sa.dag.optimized()
 			return nil
 		}else{
 			// log.Log(log.SchedApplication).Info("wait")
