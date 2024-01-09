@@ -10,24 +10,29 @@ type JobsDAG struct {
 }
 
 type Job struct {
-	ID         int
-	replicaNum int
-	replicaCpu int
-	replicaMem int
-	actionNum  int
+	ID                   int
+	replicaNum           int
+	replicaCpu           int
+	replicaMem           int
+	actionNum            int
 	predictExecutionTime float64
-	pathPriority float64
-	makespan   float64
-	replicas   []*replica
-	children   []*Job
-	parent     []*Job
+	pathPriority         float64
+	makespan             float64
+	finish               int
+	replicas             []*replica
+	children             []*Job
+	parent               []*Job
 }
 
 type replica struct {
 	ID            int
+	job           *Job
 	node          *node
 	actions       []*action
 	finalDataSize map[*Job]float64
+	children      []*replica
+	parent        []*replica
+	finish        bool
 	// node selected result
 	minTime  float64
 	minDr    float64
@@ -59,33 +64,66 @@ type bandwidth struct {
 	values map[*node]map[*node]float64
 }
 
+
 func (j *Job) createReplica() *replica {
 	r := &replica{
-		ID:      len(j.replicas),
-		node:    nil,
-		actions: []*action{},
+		ID:            len(j.replicas),
+		job:           j,
+		node:          nil,
+		actions:       []*action{},
+		finalDataSize: map[*Job]float64{},
 	}
 	j.replicas = append(j.replicas, r)
 	return r
 }
 
-func (job *Job) allParentScheduled(scheduledJob map[*Job][]bool) bool {
-	allScheduled := true
+func (job *Job) allParentScheduled(scheduledJob map[*Job]bool) bool {
 	for _, parent := range job.parent {
-		if _, exist := scheduledJob[parent]; !exist {
-			allScheduled = false
+		if scheduledJob[parent] == false {
+			return false
 		}
 	}
-	return allScheduled
+	return true
+}
+
+func (job *Job) allParentDone() bool {
+	for _, parent := range job.parent {
+		if parent.finish != parent.replicaNum {
+			return false
+		}
+	}
+	return true
+}
+
+func (replica *replica) allParentScheduled(scheduledReplica map[*replica]bool) bool {
+	for _, parent := range replica.parent {
+		if scheduledReplica[parent] == false {
+			return false
+		}
+	}
+	return true
 }
 
 func (job *Job) decideNode(nodes []*node, bw *bandwidth) bool {
 	job.makespan = 0
-	allocatedReplica := []*replica{}
+	doneReplica := []*replica{}
+
 	for idx, replica := range job.replicas {
 		replica.minValue = math.MaxFloat64
+		
+		
 		for _, node := range nodes {
-			if node.cpu-node.allocatedCpu < job.replicaCpu || node.mem-node.allocatedMem < job.replicaMem {
+			var currentJobCpuUsage int 
+			var currentJobMemUsage int	
+			for _, r := range doneReplica{
+				if r.node==node{
+					currentJobCpuUsage+=job.replicaCpu
+					currentJobMemUsage+=job.replicaMem
+				}
+			}
+			
+			
+			if node.cpu-node.allocatedCpu-currentJobCpuUsage < job.replicaCpu || node.mem-node.allocatedMem-currentJobMemUsage < job.replicaMem {
 				continue
 			}
 
@@ -167,24 +205,20 @@ func (job *Job) decideNode(nodes []*node, bw *bandwidth) bool {
 			}
 		}
 		if replica.node == nil {
-			fmt.Println("no enough node for job", job.ID, "'s replica", idx)
-			for _, replica := range allocatedReplica {
-				replica.node.allocatedCpu -= job.replicaCpu
-				replica.node.allocatedMem -= job.replicaMem
-			}
 			return false
+		}else{
+			doneReplica = append(doneReplica, replica)
 		}
-		allocatedReplica = append(allocatedReplica, replica)
-		replica.node.allocatedCpu += job.replicaCpu
-		replica.node.allocatedMem += job.replicaMem
 
 		if replica.minTime > job.makespan {
 			job.makespan = replica.minTime
 		}
 	}
+
 	for idx, replica := range job.replicas {
-		fmt.Println("Job", job.ID, ",replica", idx, ",nodeID:", replica.node.ID,
-			",minTime:", replica.minTime, ",min DR:", replica.minDr, ",minValue:", replica.minValue)
+		// fmt.Println("Job", job.ID, ",replica", idx, ",nodeID:", replica.node.ID,
+		// 	",minTime:", replica.minTime, ",min DR:", replica.minDr, ",minValue:", replica.minValue)
+		fmt.Printf("Job: %d, replica: %d, nodeID:, %d, minTime: %.1f, minDR: %.1f, minValue: %.1f\n", job.ID, idx, replica.node.ID, replica.minTime, replica.minDr, replica.minValue)
 	}
 	return true
 }
@@ -199,28 +233,33 @@ func (r *replica) createAction(exeTime float64) *action {
 	return a
 }
 
-func (j *Job) predictTime(){
-	j.predictExecutionTime = 0
-	for _, replica := range j.replicas{
-		var maxTime float64=0
-		var maxSize float64=0
-		for _, action := range replica.actions{
-			if action.executionTime > maxTime{
+func (j *Job) predictTime(aveBw float64) float64 {
+	predictExecutionTime := 0.0
+	for _, replica := range j.replicas {
+		var maxTime float64 = 0
+		var maxSize float64 = 0
+		for _, action := range replica.actions {
+			if action.executionTime > maxTime {
 				maxTime = action.executionTime
 			}
-			
-			for _, datasize := range action.datasize{
-				if datasize > maxSize{
+
+			for _, datasize := range action.datasize {
+				if datasize > maxSize {
 					maxSize = datasize
 				}
 			}
 		}
-		j.predictExecutionTime += (maxTime+maxSize)
+		if aveBw == 0.0 {
+			predictExecutionTime += maxTime
+		} else {
+			predictExecutionTime += (maxTime + maxSize/aveBw)
+		}
 	}
+	return predictExecutionTime
 }
 
-func (job *Job) priority(avgExecution, avgBW float64)float64{
-	if job.pathPriority != 0{
+func (job *Job) priority(avgExecution, avgBW float64) float64 {
+	if job.pathPriority != 0 {
 		return job.pathPriority
 	}
 	// find current job predict execution time
@@ -231,37 +270,57 @@ func (job *Job) priority(avgExecution, avgBW float64)float64{
 	for _, action := range replica.actions {
 		var transmissionTime, executionTime float64
 		executionTime = action.executionTime * avgExecution
-		maxDataSize:=0.0
+		maxDataSize := 0.0
 		for i := 0; i < len(job.replicas); i++ {
-			if maxDataSize<action.datasize[job.replicas[i]]{
+			if maxDataSize < action.datasize[job.replicas[i]] {
 				maxDataSize = action.datasize[job.replicas[i]]
 			}
 		}
-		transmissionTime = maxDataSize/avgBW
+		transmissionTime = maxDataSize / avgBW
 		time += (executionTime + transmissionTime)
 	}
 
 	var transmissionTime float64
-	maxDataSize:=0.0
+	maxDataSize := 0.0
 	for _, parent := range job.parent {
 		for _, parentReplica := range parent.replicas {
-			if maxDataSize<parentReplica.finalDataSize[job]{
+			if maxDataSize < parentReplica.finalDataSize[job] {
 				maxDataSize = parentReplica.finalDataSize[job]
 			}
 		}
 	}
-	transmissionTime = maxDataSize/avgBW
+	transmissionTime = maxDataSize / avgBW
 	time += transmissionTime
 	job.pathPriority = time
 
 	// find max child path
-	maxPath:=0.0
-	for _, child := range job.children{
-		if maxPath<child.priority(avgExecution, avgBW){
+	maxPath := 0.0
+	for _, child := range job.children {
+		if maxPath < child.priority(avgExecution, avgBW) {
 			maxPath = child.priority(avgExecution, avgBW)
 		}
 	}
-	job.pathPriority+=maxPath
+	job.pathPriority += maxPath
 	fmt.Printf("The path priority of Job %d is %.1f\n", job.ID, job.pathPriority)
 	return job.pathPriority
+}
+
+func (job *Job) getChildrenReplica() []*replica {
+	result := []*replica{}
+	for _, childJob := range job.children {
+		for _, childReplica := range childJob.replicas {
+			result = append(result, childReplica)
+		}
+	}
+	return result
+}
+
+func (job *Job) getParentReplica() []*replica {
+	result := []*replica{}
+	for _, parentJob := range job.parent {
+		for _, parentReplica := range parentJob.replicas {
+			result = append(result, parentReplica)
+		}
+	}
+	return result
 }

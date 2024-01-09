@@ -1,7 +1,7 @@
 package objects
 
 import (
-	"container/heap"
+	// "container/heap"
 	"fmt"
 	"math"
 	"math/rand"
@@ -13,116 +13,109 @@ func TestDecideNode(t *testing.T) {
 	rand.Seed(randomSeed)
 
 	nodes, bw := createRandNode()
-	jobsDag := createRandJobDAG()
+	jobsDag := createStaticJobDAG()
 
 	job := jobsDag.Vectors[11]
 	job.decideNode(nodes, bw)
 }
 
-func TestCalculateJobs(t *testing.T) {
-	var randomSeed int64 = 100
-	rand.Seed(randomSeed)
-
-	nodes, bw := createRandNode()
-	aveExecRate, aveBw := calcAve(nodes, bw)
-	// jobsDag := createRandJobDAG()
-	jobsDag := generateRandomDAG()
-	allocManager := intervalAllocManager{current: 0}
-
-	availJobsHeap := &JobHeap{
-		averageBandwidth: aveBw,
-		averageExecutionRate: aveExecRate,
-	}
-	// fmt.Println(aveBw)
-	// fmt.Println(aveExecRate)
-	// storage the job has been tried but fail, fifo
-	reserveQueue := []*Job{}
-	scheduledJob := map[*Job][]bool{}
-	heap.Init(availJobsHeap)
-
-	// If the job is end of DAG then pop it into available Jobs Heap
-	for _, job := range jobsDag.Vectors {
-		if len(job.parent) == 0 {
-			heap.Push(availJobsHeap, job)
-		}
-	}
-
-	for availJobsHeap.Len() > 0 || len(reserveQueue) > 0 {
-		var job *Job
-		for availJobsHeap.Len() > 0 {
-			job = availJobsHeap.Pop().(*Job)
-			if _, exist := scheduledJob[job]; exist {
-				continue
-			}
-			done := job.decideNode(nodes, bw)
-			if done {
-				allocManager.allocate(job)
-				scheduledJob[job] = append(scheduledJob[job], true)
-				for _, child := range job.children {
-					_, exist := scheduledJob[child]
-					if child.allParentScheduled(scheduledJob) && !exist {
-						heap.Push(availJobsHeap, child)
-					}
-				}
-			} else {
-				// Mandatory Prioritization
-				// heap.Push(availJobsHeap, job)
-				// allocManager.nextInterval()
-				// fmt.Println("updateCurrent time", allocManager.current)
-				// releaseAlloc := allocManager.releaseResource()
-				// fmt.Println("release", releaseAlloc)
-				
-				// Allow other job to be allocated if high priority job have no enough resource
-				reserveQueue = append(reserveQueue, job)
-			}
-		}
-
-		for len(reserveQueue) > 0 {
-			allocManager.nextInterval()
-			fmt.Println("updateCurrent time", allocManager.current)
-			releaseAlloc := allocManager.releaseResource()
-			fmt.Println("release", releaseAlloc)
-
-			for i:=0 ;i<len(reserveQueue);i++{
-				job = reserveQueue[0]
-				reserveQueue = reserveQueue[1:]
-				if _, exist := scheduledJob[job]; exist {
-					continue
-				}
-				done := job.decideNode(nodes, bw)
-				if done {
-					allocManager.allocate(job)
-					scheduledJob[job] = append(scheduledJob[job], true)
-					for _, child := range job.children {
-						_, exist := scheduledJob[child]
-						if child.allParentScheduled(scheduledJob) && !exist {
-							heap.Push(availJobsHeap, child)
-						}
-					}
-				}else{
-					reserveQueue = append(reserveQueue, job)
-					if len(allocManager.allocations) == 0 {
-						fmt.Println("There is no enough space for job", job.ID)
-						fmt.Println("Job", job)
-						for _, node := range nodes {
-							fmt.Printf("nodeId:%d, capacity:{%d, %d}, allocated:{%d, %d}\n", node.ID, node.cpu, node.mem, node.allocatedCpu, node.allocatedMem)
-						}
-						return
-					}
-				}
-			}
-		}
-	}
-
-	fmt.Println("makespan =", allocManager.getMakespan())
-}
+// func TestCalculateJobs(t *testing.T) {
+// 	var randomSeed int64 = 100
+// 	rand.Seed(randomSeed)
+// 	nodes, bw := createRandNode()
+// 	aveExecRate, aveBw := calcAve(nodes, bw)
+// 	jobsDag := createStaticJobDAG()
+// 	// jobsDag := generateRandomDAG()
+// 	allocManager := intervalAllocManager{current: 0}
+// 	availJobsHeap := &JobHeap{
+// 		averageBandwidth:     aveBw,
+// 		averageExecutionRate: aveExecRate,
+// 	}
+// 	// fmt.Println(aveBw)
+// 	// fmt.Println(aveExecRate)
+// 	// storage the job has been tried but fail, fifo
+// 	reserveQueue := []*Job{}
+// 	scheduledJob := map[*Job][]bool{}
+// 	heap.Init(availJobsHeap)
+// 	// If the job is end of DAG then pop it into available Jobs Heap
+// 	for _, job := range jobsDag.Vectors {
+// 		if len(job.parent) == 0 {
+// 			heap.Push(availJobsHeap, job)
+// 		}
+// 	}
+// 	for availJobsHeap.Len() > 0 || len(reserveQueue) > 0 {
+// 		var job *Job
+// 		for availJobsHeap.Len() > 0 {
+// 			job = availJobsHeap.Pop().(*Job)
+// 			if _, exist := scheduledJob[job]; exist {
+// 				continue
+// 			}
+// 			done := job.decideNode(nodes, bw)
+// 			allParentDone := job.allParentDone()
+// 			if done && allParentDone {
+// 				allocManager.allocate(job)
+// 				scheduledJob[job] = append(scheduledJob[job], true)
+// 				for _, child := range job.children {
+// 					_, exist := scheduledJob[child]
+// 					if child.allParentScheduled(scheduledJob) && !exist {
+// 						heap.Push(availJobsHeap, child)
+// 					}
+// 				}
+// 			} else {
+// 				// Mandatory Prioritization
+// 				// heap.Push(availJobsHeap, job)
+// 				// allocManager.nextInterval()
+// 				// fmt.Printf("updateCurrent time: %.2f\n", allocManager.current)
+// 				// releaseAlloc := allocManager.releaseResource()
+// 				// fmt.Println("release", releaseAlloc)
+// 				// Allow other job to be allocated if high priority job have no enough resource
+// 				reserveQueue = append(reserveQueue, job)
+// 			}
+// 		}
+// 		for len(reserveQueue) > 0 {
+// 			allocManager.nextInterval()
+// 			fmt.Printf("updateCurrent time: %.2f\n", allocManager.current)
+// 			allocManager.releaseResource()
+// 			for i := 0; i < len(reserveQueue); i++ {
+// 				job = reserveQueue[0]
+// 				reserveQueue = reserveQueue[1:]
+// 				if _, exist := scheduledJob[job]; exist {
+// 					continue
+// 				}
+// 				done := job.decideNode(nodes, bw)
+// 				allParentDone := job.allParentDone()
+// 				if done && allParentDone {
+// 					allocManager.allocate(job)
+// 					scheduledJob[job] = append(scheduledJob[job], true)
+// 					for _, child := range job.children {
+// 						_, exist := scheduledJob[child]
+// 						if child.allParentScheduled(scheduledJob) && !exist {
+// 							heap.Push(availJobsHeap, child)
+// 						}
+// 					}
+// 				} else {
+// 					reserveQueue = append(reserveQueue, job)
+// 					if len(allocManager.allocations) == 0 {
+// 						fmt.Println("There is no enough space for job", job.ID)
+// 						fmt.Println("Job", job)
+// 						for _, node := range nodes {
+// 							fmt.Printf("nodeId:%d, capacity:{%d, %d}, allocated:{%d, %d}\n", node.ID, node.cpu, node.mem, node.allocatedCpu, node.allocatedMem)
+// 						}
+// 						return
+// 					}
+// 				}
+// 			}
+// 		}
+// 	}
+// 	fmt.Printf("makespan = %.2f\n", allocManager.getMakespan())
+// }
 
 func TestCalculateLastJob(t *testing.T) {
 	var randomSeed int64 = 100
 	rand.Seed(randomSeed)
 
 	nodes, bw := createRandNode()
-	jobsDag := createRandJobDAG()
+	jobsDag := createStaticJobDAG()
 
 	job := jobsDag.Vectors[11]
 	for idx, replica := range job.replicas {
@@ -184,17 +177,17 @@ func TestCalculateLastJob(t *testing.T) {
 			}
 
 		}
-
-		replica.node.allocatedCpu += job.replicaCpu
-		replica.node.allocatedMem += job.replicaMem
+		// replica.node.allocatedCpu += job.replicaCpu
+		// replica.node.allocatedMem += job.replicaMem
 	}
 	for idx, replica := range job.replicas {
-		fmt.Println("Job", job.ID, ",replica", idx, ",nodeID:", replica.node.ID,
-			",minTime:", replica.minTime, ",min DR:", replica.minDr, ",minValue:", replica.minValue)
+		// fmt.Println("Job", job.ID, ",replica", idx, ",nodeID:", replica.node.ID,
+		// 	",minTime:", replica.minTime, ",min DR:", replica.minDr, ",minValue:", replica.minValue)
+		fmt.Printf("Job: %d, replica: %d, nodeID:, %d, minTime: %.1f, minDR: %.1f, minValue: %.1f\n", job.ID, idx, replica.node.ID, replica.minTime, replica.minDr, replica.minValue)
 	}
 }
 
-func createRandJobDAG() *JobsDAG {
+func createStaticJobDAG() *JobsDAG {
 	jobsDAG := JobsDAG{
 		Vectors: []*Job{},
 	}
@@ -202,13 +195,15 @@ func createRandJobDAG() *JobsDAG {
 		job := &Job{
 			ID:         i,
 			replicaNum: rand.Int()%7 + 1,
+			// replicaNum: 1,
 			replicaCpu: (rand.Int()%4 + 1) * 2 * 1000,
 			replicaMem: (rand.Int()%4 + 1) * 2 * 1024,
 			actionNum:  rand.Int()%7 + 1,
 			children:   []*Job{},
+			finish:     0,
 		}
 		createRandReplica(job)
-		job.predictTime()
+		job.predictExecutionTime = job.predictTime(0.0)
 		jobsDAG.Vectors = append(jobsDAG.Vectors, job)
 	}
 
@@ -225,11 +220,28 @@ func createRandJobDAG() *JobsDAG {
 	jobsDAG.Vectors[9].children = []*Job{vectors[11]}
 	jobsDAG.Vectors[10].children = []*Job{vectors[11]}
 	jobsDAG.Vectors[11].children = []*Job{}
-	for i, job := range vectors {
-		Log(fmt.Sprintf("job:%d", i), job)
+	for i, j := range vectors {
+		Log(fmt.Sprintf("job:%d", i), j)
+		// Initialize final Data size
+		for _, r := range j.replicas {
+			for _, child := range j.children {
+				r.finalDataSize[child] = rand.Float64() * 10000
+			}
+		}
 	}
+
 	// create parent for each vectors by using children
 	jobsDAG = *ChildToParent(&jobsDAG)
+
+	// create relationship between replicas
+	for _, j := range vectors {
+		childrenReplicas := j.getChildrenReplica()
+		parentReplicas := j.getParentReplica()
+		for _, r := range j.replicas {
+			r.children = childrenReplicas
+			r.parent = parentReplicas
+		}
+	}
 
 	return &jobsDAG
 }
@@ -315,29 +327,25 @@ func createRandNode() ([]*node, *bandwidth) {
 	}
 
 	return nodes, bw
-
 }
 
-func calcAve(nodes []*node, bw *bandwidth)(float64, float64){
-	sum:=0.0
-	count:=len(nodes)
-	for _, node:= range nodes{
-		sum+=node.executionRate
-	}
-	avgExecutionRage:=sum/float64(count)
-
-	edgeCount:=0.0
-	edgeSum:=0.0
-	for i:=0;i<len(nodes)-1;i++{
-		for j:=i+1;j<len(nodes);j++{
-			from:= nodes[i]
-			to:=nodes[j]
-			edgeCount+=1.0
-			edgeSum+=(*bw).values[from][to]
-		}
-	}
-	avgBandwidth:=edgeSum/edgeCount
-
-	return avgExecutionRage, avgBandwidth
-}
-
+// func calcAve(nodes []*node, bw *bandwidth)(float64, float64){
+// 	sum:=0.0
+// 	count:=len(nodes)
+// 	for _, node:= range nodes{
+// 		sum+=node.executionRate
+// 	}
+// 	avgExecutionRage:=sum/float64(count)
+// 	edgeCount:=0.0
+// 	edgeSum:=0.0
+// 	for i:=0;i<len(nodes)-1;i++{
+// 		for j:=i+1;j<len(nodes);j++{
+// 			from:= nodes[i]
+// 			to:=nodes[j]
+// 			edgeCount+=1.0
+// 			edgeSum+=(*bw).values[from][to]
+// 		}
+// 	}
+// 	avgBandwidth:=edgeSum/edgeCount
+// 	return avgExecutionRage, avgBandwidth
+// }
