@@ -128,7 +128,7 @@ func TestCalculateLastJob(t *testing.T) {
 			var time float64
 			for _, action := range replica.actions {
 				var transmissionTime, executionTime float64
-				executionTime = action.executionTime * node.executionRate
+				executionTime = action.executionTime / node.executionRate
 				transmissionTime = 0
 				if idx != 0 {
 					for i := 0; i < idx; i++ {
@@ -282,7 +282,7 @@ func Log(describe string, a any) {
 }
 
 func createRandNode() ([]*node, *bandwidth) {
-	nodeCount := 6
+	nodeCount := 10
 	nodes := []*node{}
 	bw := &bandwidth{
 		values: map[*node]map[*node]float64{},

@@ -1,8 +1,8 @@
 package objects
 
 import (
-	"fmt"
 	"container/heap"
+	"fmt"
 )
 
 type customAlgo struct {
@@ -19,8 +19,16 @@ func createCustomAlgo(jobs []*Job, nodes []*node, bw *bandwidth) *customAlgo {
 	}
 }
 
-func (c *customAlgo) simulate() float64{
-	allocManager := intervalAllocManager{current: 0}
+func (c *customAlgo) simulate() (float64, float64) {
+	allocManager := intervalAllocManager{
+		totalCapacity: []float64{},
+		totalAllocte:  []float64{0.0, 0.0},
+		totalUsage:    []float64{0.0, 0.0},
+		availableTime: map[*node]float64{},
+		current:       0,
+	}
+	allocManager.initCapacity(c.nodes)
+	allocManager.initAvailableTime(c.nodes)
 	aveExecRate, aveBw := calcAve(c.nodes, c.bw)
 	availJobsHeap := &JobHeap{
 		averageBandwidth:     aveBw,
@@ -29,6 +37,7 @@ func (c *customAlgo) simulate() float64{
 	// fmt.Println(aveBw)
 	// fmt.Println(aveExecRate)
 	// storage the job has been tried but fail, fifo
+
 	reserveQueue := []*Job{}
 	scheduledJob := map[*Job]bool{}
 	heap.Init(availJobsHeap)
@@ -53,7 +62,7 @@ func (c *customAlgo) simulate() float64{
 			done := job.decideNode(c.nodes, c.bw)
 			allParentDone := job.allParentDone()
 			if done && allParentDone {
-				
+
 				allocManager.allocate(job)
 				// for _, node := range c.nodes {
 				// 	fmt.Printf("nodeId:%d, capacity:{%d, %d}, allocated:{%d, %d}\n", node.ID, node.cpu, node.mem, node.allocatedCpu, node.allocatedMem)
@@ -79,7 +88,7 @@ func (c *customAlgo) simulate() float64{
 
 		for len(reserveQueue) > 0 {
 			allocManager.nextInterval()
-			fmt.Printf("updateCurrent time: %.2f\n", allocManager.current)
+			// fmt.Printf("updateCurrent time: %.0f\n", allocManager.current)
 			allocManager.releaseResource()
 
 			// for _, node := range c.nodes {
@@ -100,7 +109,7 @@ func (c *customAlgo) simulate() float64{
 					// }
 					scheduledJob[job] = true
 					for _, child := range job.children {
-						
+
 						if child.allParentScheduled(scheduledJob) && !scheduledJob[child] {
 							heap.Push(availJobsHeap, child)
 						}
@@ -113,7 +122,7 @@ func (c *customAlgo) simulate() float64{
 						for _, node := range c.nodes {
 							fmt.Printf("nodeId:%d, capacity:{%d, %d}, allocated:{%d, %d}\n", node.ID, node.cpu, node.mem, node.allocatedCpu, node.allocatedMem)
 						}
-						return 0.0
+						return 0.0, 0.0
 					}
 				}
 			}
@@ -121,5 +130,5 @@ func (c *customAlgo) simulate() float64{
 	}
 
 	fmt.Printf("makespan = %.2f\n", allocManager.getMakespan())
-	return allocManager.getMakespan()
+	return allocManager.getResult()
 }

@@ -6,7 +6,7 @@ import (
 	"sort"
 )
 
-type table map[*Job]map[*node]float64
+type table map[*replica]map[*node]float64
 
 type mpeft struct {
 	averageExecutionRate float64
@@ -14,21 +14,21 @@ type mpeft struct {
 	jobs                 []*Job
 	replicas             []*replica
 	nodes                []*node
-	taskList             map[*node][]*Job
-	binding              map[*Job]*node
+	taskList             map[*node][]*replica
+	binding              map[*replica]*node
 	// background
 	bw  *bandwidth
-	w   table                     // computation cost
-	c   map[*Job]map[*Job]float64 // communication cost between two jobs
-	AFT map[*Job]float64          // the actual finished time of t_i
-	EST table                     // the earliest starting time of t_i on p_j
-	EFT table                     // the earliest finished time of t_i on p_j
+	w   table                             // computation cost
+	c   map[*replica]map[*replica]float64 // communication cost between two replicas
+	AFT map[*replica]float64              // the actual finished time of t_i
+	EST table                             // the earliest starting time of t_i on p_j
+	EFT table                             // the earliest finished time of t_i on p_j
 	// MPEFT specific
-	offspringSet map[*Job][]*Job
-	DCT          map[*Job]float64
-	rankAP       map[*Job]float64
+	offspringSet map[*replica][]*replica
+	DCT          map[*replica]float64
+	rankAP       map[*replica]float64
 	OCT          table
-	CPS          map[*Job]map[*node]*Job
+	CPS          map[*replica]map[*node]*replica
 	MEFT         table
 	k            table
 }
@@ -36,7 +36,6 @@ type mpeft struct {
 func createMPEFT(jobs []*Job, nodes []*node, bw *bandwidth) *mpeft {
 	fmt.Println("create MPEFT object")
 	aveExecRate, aveBw := calcAve(nodes, bw)
-	offspringSet := calcOffSpringSet(jobs)
 
 	replicas := []*replica{}
 	for _, tj := range jobs {
@@ -44,22 +43,24 @@ func createMPEFT(jobs []*Job, nodes []*node, bw *bandwidth) *mpeft {
 			replicas = append(replicas, r)
 		}
 	}
-	taskList := map[*node][]*Job{}
+	offspringSet := calcOffSpringSet(replicas)
+
+	taskList := map[*node][]*replica{}
 	for _, n := range nodes {
-		taskList[n] = []*Job{}
+		taskList[n] = []*replica{}
 	}
 
 	// init AFT,EST,EFT
-	AFT := map[*Job]float64{}
+	AFT := map[*replica]float64{}
 	EST := table{}
 	EFT := table{}
-	for _, j := range jobs {
-		AFT[j] = math.MaxFloat64
-		EST[j] = map[*node]float64{}
-		EFT[j] = map[*node]float64{}
+	for _, r := range replicas {
+		AFT[r] = math.MaxFloat64
+		EST[r] = map[*node]float64{}
+		EFT[r] = map[*node]float64{}
 		for _, n := range nodes {
-			EST[j][n] = -1.0
-			EFT[j][n] = -1.0
+			EST[r][n] = -1.0
+			EFT[r][n] = -1.0
 		}
 	}
 
@@ -71,31 +72,31 @@ func createMPEFT(jobs []*Job, nodes []*node, bw *bandwidth) *mpeft {
 		offspringSet:         offspringSet,
 		nodes:                nodes,
 		taskList:             taskList,
-		binding:              map[*Job]*node{},
+		binding:              map[*replica]*node{},
 		bw:                   bw,
 		w:                    table{},
-		c:                    map[*Job]map[*Job]float64{},
+		c:                    map[*replica]map[*replica]float64{},
 		AFT:                  AFT,
 		EST:                  EST,
 		EFT:                  EFT,
-		DCT:                  map[*Job]float64{},
-		rankAP:               map[*Job]float64{},
+		DCT:                  map[*replica]float64{},
+		rankAP:               map[*replica]float64{},
 		OCT:                  table{},
-		CPS:                  map[*Job]map[*node]*Job{},
+		CPS:                  map[*replica]map[*node]*replica{},
 		MEFT:                 table{},
 		k:                    table{},
 	}
 }
 
-func calcOffSpringSet(jobs []*Job) map[*Job][]*Job {
-	result := map[*Job][]*Job{}
-	var dfs func(*Job) []*Job
-	dfs = func(j *Job) []*Job {
+func calcOffSpringSet(replicas []*replica) map[*replica][]*replica {
+	result := map[*replica][]*replica{}
+	var dfs func(*replica) []*replica
+	dfs = func(j *replica) []*replica {
 		if _, ok := result[j]; ok {
 			return result[j]
 		}
 
-		currentState := []*Job{}
+		currentState := []*replica{}
 		for _, child := range j.children {
 			currentState = append(currentState, child)
 			currentState = append(currentState, dfs(child)...)
@@ -105,7 +106,7 @@ func calcOffSpringSet(jobs []*Job) map[*Job][]*Job {
 		result[j] = currentState
 		return currentState
 	}
-	for _, j := range jobs {
+	for _, j := range replicas {
 		dfs(j)
 	}
 	// fmt.Println("--Show offspring set--")
@@ -120,9 +121,9 @@ func calcOffSpringSet(jobs []*Job) map[*Job][]*Job {
 	return result
 }
 
-func removeDuplicates(arr []*Job) []*Job {
-	seen := make(map[*Job]bool)
-	result := []*Job{}
+func removeDuplicates(arr []*replica) []*replica {
+	seen := make(map[*replica]bool)
+	result := []*replica{}
 	for _, value := range arr {
 		if _, ok := seen[value]; !ok {
 			seen[value] = true
@@ -143,18 +144,24 @@ func (m *mpeft) allocation() {
 	m.decideNode()
 }
 
-func (m *mpeft) simulate() float64 {
+func (m *mpeft) simulate() (float64, float64) {
 	m.allocation()
-	allocManager := intervalAllocManager{current: 0}
-	sort.Slice(m.jobs, func(i, j int) bool {
-		return m.rankAP[m.jobs[i]] < m.rankAP[m.jobs[j]]
+	allocManager := intervalAllocManager{
+		totalCapacity: []float64{},
+		totalAllocte:  []float64{0.0, 0.0},
+		totalUsage:    []float64{0.0, 0.0},
+		current:       0,
+	}
+	allocManager.initCapacity(m.nodes)
+	sort.Slice(m.replicas, func(i, j int) bool {
+		return m.rankAP[m.replicas[i]] < m.rankAP[m.replicas[j]]
 	})
 	for _, node := range m.nodes {
 		fmt.Printf("nodeId:%d, capacity:{%d, %d}, allocated:{%d, %d}\n", node.ID, node.cpu, node.mem, node.allocatedCpu, node.allocatedMem)
 	}
 
 	queue := []*replica{}
-	scheduledReplica := map[*replica]bool{}
+	scheduledJob := map[*Job]bool{}
 	for _, j := range m.jobs {
 		j.predictTime(0.0)
 		if len(j.parent) == 0 {
@@ -164,41 +171,48 @@ func (m *mpeft) simulate() float64 {
 
 	for len(queue) > 0 {
 		replica := queue[0]
+		job := replica.job
+		if _, exist := scheduledJob[job]; exist {
+			queue = queue[1:]
+			continue
+		}
 
 		done := m.tryNode(replica)
-		allParentDone := replica.job.allParentDone()
-		if done && allParentDone {
+		oneParentDone := job.oneParentReplicaDone()
+		if done && oneParentDone {
 
-			fmt.Println("Replica ID:", replica.job.ID, ",Select Node ID:", replica.node.ID)
-			scheduledReplica[replica] = true
+			// fmt.Println("Replica ID:", replica.job.ID, ",Select Node ID:", replica.node.ID)
+			scheduledJob[job] = true
 			queue = queue[1:]
 			allocManager.allocate(replica)
-			for _, node := range m.nodes {
-				fmt.Printf("nodeId:%d, capacity:{%d, %d}, allocated:{%d, %d}\n", node.ID, node.cpu, node.mem, node.allocatedCpu, node.allocatedMem)
-			}
+			// for _, node := range m.nodes {
+			// 	fmt.Printf("nodeId:%d, capacity:{%d, %d}, allocated:{%d, %d}\n", node.ID, node.cpu, node.mem, node.allocatedCpu, node.allocatedMem)
+			// }
 			// is child need to been consider??
-			for _, childReplica := range replica.children {
-				_, exist := scheduledReplica[childReplica]
-				if childReplica.allParentScheduled(scheduledReplica) && !exist {
-					queue = append(queue, childReplica)
+			for _, childJob := range job.children {
+				_, exist := scheduledJob[childJob]
+				if childJob.allParentScheduled(scheduledJob) && !exist {
+					for _, childReplica:= range childJob.replicas{
+						queue = append(queue, childReplica)
+					}
 				}
 			}
 		} else {
 
-			fmt.Printf("Try replica: (j-%d r-%d (%d, %d)), On node: %d (%d, %d)\n", replica.ID, replica.job.ID, replica.job.replicaCpu, replica.job.replicaMem, replica.node.ID, replica.node.cpu, replica.node.mem)
+			// fmt.Printf("Try replica: (j-%d r-%d (%d, %d)), On node: %d (%d, %d)\n", replica.ID, replica.job.ID, replica.job.replicaCpu, replica.job.replicaMem, replica.node.ID, replica.node.cpu, replica.node.mem)
 			allocManager.nextInterval()
-			fmt.Printf("updateCurrent time: %.2f\n", allocManager.current)
+			// fmt.Printf("updateCurrent time: %.2f\n", allocManager.current)
 			_ = allocManager.releaseResource()
-			for _, node := range m.nodes {
-				fmt.Printf("nodeId:%d, capacity:{%d, %d}, allocated:{%d, %d}\n", node.ID, node.cpu, node.mem, node.allocatedCpu, node.allocatedMem)
-			}
-			if allocManager.current==math.MaxFloat64{
-				return 0.0
+			// for _, node := range m.nodes {
+			// 	fmt.Printf("nodeId:%d, capacity:{%d, %d}, allocated:{%d, %d}\n", node.ID, node.cpu, node.mem, node.allocatedCpu, node.allocatedMem)
+			// }
+			if allocManager.current == math.MaxFloat64 {
+				return 0.0, 0.0
 			}
 		}
 	}
-	fmt.Printf("makespan = %.2f\n", allocManager.getMakespan())
-	return allocManager.getMakespan()
+	// fmt.Printf("makespan = %.2f\n", allocManager.getMakespan())
+	return allocManager.getResult()
 }
 
 func (m *mpeft) tryNode(r *replica) bool {
@@ -213,23 +227,24 @@ func (m *mpeft) tryNode(r *replica) bool {
 }
 
 func (m *mpeft) calcDCT() {
-	for _, j := range m.jobs {
+	for _, r := range m.replicas {
 		executionTime := 0.0
 		// execution time
-		for _, a := range j.replicas[0].actions {
+		for _, a := range r.actions {
 			executionTime += a.executionTime
 		}
 		// transmission time
-		for _, r := range j.replicas {
-			sumData := 0.0
-			for _, data := range r.finalDataSize {
-				sumData += data
-			}
-			if _, ok := m.DCT[r.job]; !ok {
-				m.DCT[r.job] = 0.0
-			}
-			m.DCT[r.job] += (executionTime*m.averageExecutionRate + sumData/m.averageBandwidth)
+
+		sumData := 0.0
+
+		for _, data := range r.finalDataSize {
+			sumData += data
 		}
+		if _, ok := m.DCT[r]; !ok {
+			m.DCT[r] = 0.0
+		}
+		m.DCT[r] += (executionTime/m.averageExecutionRate + sumData/m.averageBandwidth)
+
 	}
 
 	// print result
@@ -242,61 +257,62 @@ func (m *mpeft) calcDCT() {
 }
 
 func (m *mpeft) calcTime() {
-	for _, j := range m.jobs {
-		if _, ok := m.c[j]; !ok {
-			m.c[j] = map[*Job]float64{}
-		}
-		for _, child := range j.children {
-			dataSize := 0.0
-			for _, r := range j.replicas {
-				dataSize += r.finalDataSize[child]
-			}
-			dataSize /= float64(j.replicaNum)
-			m.c[j][child] = dataSize / m.averageBandwidth
+	for _, r := range m.replicas {
+		if _, ok := m.c[r]; !ok {
+			m.c[r] = map[*replica]float64{}
 		}
 
-		maxExecutionTime := 0.0
-		for _, replica := range j.replicas {
-			var executionTime float64 = 0
-			for _, action := range replica.actions {
-				executionTime += action.executionTime
+		for _, child := range r.job.children {
+			for _, childReplica := range child.replicas {
+				m.c[r][childReplica] = r.finalDataSize[child] / m.averageBandwidth
 			}
-			if executionTime > maxExecutionTime {
-				maxExecutionTime = executionTime
-			}
+
 		}
-		if _, ok := m.w[j]; !ok {
-			m.w[j] = map[*node]float64{}
+
+		var executionTime float64 = 0
+		for _, action := range r.actions {
+			executionTime += action.executionTime
+		}
+
+		if _, ok := m.w[r]; !ok {
+			m.w[r] = map[*node]float64{}
 		}
 		for _, node := range m.nodes {
-			m.w[j][node] = maxExecutionTime * node.executionRate
+			m.w[r][node] = executionTime / node.executionRate
 		}
 	}
 	// for _,j:=range m.jobs{
 	// 	fmt.Println("from jobID:",j.ID)
-	// 	for _, child:=range j.children{
-	// 		fmt.Println("  to jobID:" , child.ID , ",communication Time:",m.c[j][child])
+	// 	for _, r:=range j.replicas{
+	// 		fmt.Println("from replica ID:",r.ID)
+	// 		for _, child:=range r.children{
+	// 			fmt.Println(" JobID: ",child.job.ID," to replica ID:" , child.ID , ",communication Time:",m.c[r][child])
+	// 		}
 	// 	}
+
 	// }
 	// for _,j:=range m.jobs{
 	// 	fmt.Println("jobID:",j.ID)
-	// 	for _, node:=range m.nodes{
-	// 		fmt.Println("  execute on nodeID:" , node.ID , ",execution Time:",m.w[j][node])
+	// 	for _, r:=range j.replicas{
+	// 		fmt.Println("from replica ID:",r.ID)
+	// 		for _, node:=range m.nodes{
+	// 			fmt.Println("  execute on nodeID:" , node.ID , ",execution Time:",m.w[r][node])
+	// 		}
 	// 	}
 	// }
 
 }
 
 func (m *mpeft) calcRankAP() {
-	for _, j := range m.jobs {
-		for _, r := range j.replicas {
-			sum := m.DCT[r.job]
-			for _, offsetJob := range m.offspringSet[j] {
-				sum += m.DCT[offsetJob]
-			}
-			m.rankAP[r.job] = sum
+
+	for _, r := range m.replicas {
+		sum := m.DCT[r]
+		for _, offsetJob := range m.offspringSet[r] {
+			sum += m.DCT[offsetJob]
 		}
+		m.rankAP[r] = sum
 	}
+
 	// print result
 	// for _, j := range m.jobs{
 	// 	fmt.Println("jobID: ",j.ID)
@@ -307,29 +323,29 @@ func (m *mpeft) calcRankAP() {
 }
 
 func (m *mpeft) calcOCTandCPS() {
-	var dfs func(*Job)
-	dfs = func(j *Job) {
-		if _, ok := m.OCT[j]; ok {
+	var dfs func(*replica)
+	dfs = func(r *replica) {
+		if _, ok := m.OCT[r]; ok {
 			return
 		}
 
-		if len(j.children) == 0 {
+		if len(r.children) == 0 {
 			for _, n := range m.nodes {
-				if _, ok := m.OCT[j]; !ok {
-					m.OCT[j] = map[*node]float64{}
-					m.CPS[j] = map[*node]*Job{}
+				if _, ok := m.OCT[r]; !ok {
+					m.OCT[r] = map[*node]float64{}
+					m.CPS[r] = map[*node]*replica{}
 				}
 
-				m.OCT[j][n] = 0
-				m.CPS[j][n] = nil
+				m.OCT[r][n] = 0
+				m.CPS[r][n] = nil
 			}
 			return
 		}
 
 		maxMakespan := 0.0
-		var criticalPath *Job
+		var criticalPath *replica
 		for _, n := range m.nodes {
-			for _, succ := range j.children {
+			for _, succ := range r.children {
 				min := math.MaxFloat64
 				for _, cn := range m.nodes {
 					if _, ok := m.OCT[succ][cn]; !ok {
@@ -340,7 +356,7 @@ func (m *mpeft) calcOCTandCPS() {
 					current += m.w[succ][cn]
 
 					if n != cn {
-						current += m.c[j][succ]
+						current += m.c[r][succ]
 					}
 
 					if min > current {
@@ -352,28 +368,32 @@ func (m *mpeft) calcOCTandCPS() {
 					criticalPath = succ
 				}
 			}
-			if _, ok := m.OCT[j]; !ok {
-				m.OCT[j] = map[*node]float64{}
-				m.CPS[j] = map[*node]*Job{}
+			if _, ok := m.OCT[r]; !ok {
+				m.OCT[r] = map[*node]float64{}
+				m.CPS[r] = map[*node]*replica{}
 			}
-			m.OCT[j][n] = maxMakespan
-			m.CPS[j][n] = criticalPath
+			m.OCT[r][n] = maxMakespan
+			m.CPS[r][n] = criticalPath
 		}
 	}
 
-	for _, j := range m.jobs {
-		dfs(j)
+	for _, r := range m.replicas {
+		dfs(r)
 	}
 
 	// for _, j:=range m.jobs{
 	// 	fmt.Println("job ID:", j.ID)
-	// 	for _, n:= range m.nodes{
-	// 		if m.CPS[j][n]==nil{
-	// 			fmt.Printf("  Node ID:%d, OCT: %.1f, CPS: %d\n",n.ID, m.OCT[j][n], -1)
-	// 		}else{
-	// 			fmt.Printf("  Node ID:%d, OCT: %.1f, CPS: %d\n",n.ID, m.OCT[j][n], m.CPS[j][n].ID)
+	// 	for _, r := range j.replicas{
+	// 		fmt.Println("replica ID:", r.ID)
+	// 		for _, n:= range m.nodes{
+	// 			if m.CPS[r][n]==nil{
+	// 				fmt.Printf("  Node ID:%d, OCT: %.1f, CPS: %d\n",n.ID, m.OCT[r][n], -1)
+	// 			}else{
+	// 				fmt.Printf("  Node ID:%d, OCT: %.1f, CPS: %d\n",n.ID, m.OCT[r][n], m.CPS[r][n].ID)
+	// 			}
 	// 		}
 	// 	}
+
 	// }
 }
 
@@ -412,21 +432,21 @@ func (m *mpeft) calcEFT() {
 	// 	m.sortTaskList(selectNode)
 	// }
 
-	for _, j := range m.jobs {
-		m.AFT[j] = math.MaxFloat64
+	for _, r := range m.replicas {
+		m.AFT[r] = math.MaxFloat64
 		for _, n := range m.nodes {
-			m.getEST(j, n) // calc EST[j][n]
+			m.getEST(r, n) // calc EST[r][n]
 		}
-		selectNode := m.binding[j]
-		m.taskList[selectNode] = append(m.taskList[selectNode], j)
+		selectNode := m.binding[r]
+		m.taskList[selectNode] = append(m.taskList[selectNode], r)
 		m.sortTaskList(selectNode)
 	}
 
-	// for _, j := range m.jobs {
-	// 	fmt.Printf("job ID:%d, Node ID: %d, AFT: %.1f\n", j.ID, m.binding[j].ID, m.AFT[j])
+	// for _, r := range m.replicas {
+	// 	fmt.Printf("job ID:%d, Node ID: %d, AFT: %.1f\n", r.ID, m.binding[r].ID, m.AFT[r])
 
 	// 	for _, n := range m.nodes {
-	// 		fmt.Printf("  Node ID:%d, EST: %.1f, EFT: %.1f\n", n.ID, m.EST[j][n], m.EFT[j][n])
+	// 		fmt.Printf("  Node ID:%d, EST: %.1f, EFT: %.1f\n", n.ID, m.EST[r][n], m.EFT[r][n])
 	// 	}
 	// }
 
@@ -450,9 +470,9 @@ func (m *mpeft) avail(n *node) float64 {
 	return m.AFT[j]
 }
 
-func (m *mpeft) getEST(j *Job, n *node) {
+func (m *mpeft) getEST(r *replica, n *node) {
 	est := 0.0
-	for _, parent := range j.parent {
+	for _, parent := range r.parent {
 		if m.binding[parent] == nil {
 			for _, n := range m.nodes {
 				m.getEST(parent, n)
@@ -464,7 +484,7 @@ func (m *mpeft) getEST(j *Job, n *node) {
 		parentNode := m.binding[parent]
 		c := 0.0
 		if m.binding[parent] != n {
-			c = m.c[parent][j] * m.averageBandwidth / m.bw.values[parentNode][n]
+			c = m.c[parent][r] * m.averageBandwidth / m.bw.values[parentNode][n]
 		}
 		est = math.Max(est, m.AFT[parent]+c)
 	}
@@ -491,75 +511,72 @@ func (m *mpeft) getEST(j *Job, n *node) {
 	}
 	for _, slot := range freeTimes {
 
-		if est < slot[0] && slot[0]+m.w[j][n] <= slot[1] {
+		if est < slot[0] && slot[0]+m.w[r][n] <= slot[1] {
 			est = slot[0]
 			break
 		}
-		if est >= slot[0] && est+m.w[j][n] <= slot[1] {
+		if est >= slot[0] && est+m.w[r][n] <= slot[1] {
 			break
 		}
 	}
-	m.EST[j][n] = est
-	m.EFT[j][n] = m.EST[j][n] + m.w[j][n]
-	if m.EFT[j][n] < m.AFT[j] {
-		m.AFT[j] = m.EFT[j][n]
-		m.binding[j] = n
+	m.EST[r][n] = est
+	m.EFT[r][n] = m.EST[r][n] + m.w[r][n]
+	if m.EFT[r][n] < m.AFT[r] {
+		m.AFT[r] = m.EFT[r][n]
+		m.binding[r] = n
 	}
 
 }
 
 func (m *mpeft) calcK() {
-	for _, j := range m.jobs {
-		if _, ok := m.k[j]; !ok {
-			m.k[j] = map[*node]float64{}
+	for _, r := range m.replicas {
+		if _, ok := m.k[r]; !ok {
+			m.k[r] = map[*node]float64{}
 		}
 		for _, n := range m.nodes {
-			if len(j.children) <= len(m.nodes)+1 {
-				m.k[j][n] = 1
+			if len(r.children) <= len(m.nodes)+1 {
+				m.k[r][n] = 1
 				continue
 			}
 			sum := 0.0
-			for _, child := range j.children {
-				sum += m.rankAP[child] + m.c[j][child]
+			for _, child := range r.children {
+				sum += m.rankAP[child] + m.c[r][child]
 			}
-			k := m.rankAP[m.CPS[j][n]] / sum
-			m.k[j][n] = k
+			k := m.rankAP[m.CPS[r][n]] / sum
+			m.k[r][n] = k
 		}
 	}
 }
 
 func (m *mpeft) calcMEFT() {
-	for _, j := range m.jobs {
-		if _, ok := m.MEFT[j]; !ok {
-			m.MEFT[j] = map[*node]float64{}
+	for _, r := range m.replicas {
+		if _, ok := m.MEFT[r]; !ok {
+			m.MEFT[r] = map[*node]float64{}
 		}
 		for _, n := range m.nodes {
-			m.MEFT[j][n] = m.EFT[j][n] + m.OCT[j][n]*m.k[j][n]
+			m.MEFT[r][n] = m.EFT[r][n] + m.OCT[r][n]*m.k[r][n]
 		}
 	}
-	for _, j := range m.jobs {
-		fmt.Printf("job ID:%d\n", j.ID)
-		for _, n := range m.nodes {
-			fmt.Printf("  Node ID:%d, MEFT: %.1f\n", n.ID, m.MEFT[j][n])
-		}
-	}
+	// for _, r := range m.replicas {
+	// 	fmt.Printf("replica ID:%d\n", r.ID)
+	// 	for _, n := range m.nodes {
+	// 		fmt.Printf("  Node ID:%d, MEFT: %.1f\n", n.ID, m.MEFT[r][n])
+	// 	}
+	// }
 }
 
 func (m *mpeft) decideNode() {
-	for _, j := range m.jobs {
-		var selectNode *node
+	for _, r := range m.replicas {
+		j := r.job
 		min := math.MaxFloat64
 		for _, n := range m.nodes {
 			if n.cpu < j.replicaCpu || n.mem < j.replicaMem {
 				continue
 			}
-			if min > m.MEFT[j][n] {
-				min = m.MEFT[j][n]
-				selectNode = n
+			if min > m.MEFT[r][n] {
+				min = m.MEFT[r][n]
+				r.node = n
 			}
-		}
-		for _, r := range j.replicas {
-			r.node = selectNode
 		}
 	}
 }

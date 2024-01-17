@@ -17,11 +17,11 @@ func TestCreateMPEFT(t *testing.T) {
 	createMPEFT(jobsDag.Vectors, nodes, bw)
 }
 
-func TestCalcOffSpringSet(t *testing.T) {
-	jobsDag := createStaticJobDAG()
-	// jobsDag := generateRandomDAG()
-	calcOffSpringSet(jobsDag.Vectors)
-}
+// func TestCalcOffSpringSet(t *testing.T) {
+// 	jobsDag := createStaticJobDAG()
+// 	// jobsDag := generateRandomDAG()
+// 	calcOffSpringSet(jobsDag.Vectors)
+// }
 
 func TestCalcDCT(t *testing.T) {
 	nodes, bw := createRandNode()

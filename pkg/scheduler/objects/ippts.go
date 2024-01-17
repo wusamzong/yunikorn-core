@@ -3,7 +3,7 @@ package objects
 import (
 	"math"
 	"sort"
-	"fmt"
+	// "fmt"
 )
 
 // type table map[*Job]map[*node]float64
@@ -14,19 +14,19 @@ type ippts struct {
 	jobs                 []*Job
 	replicas             []*replica
 	nodes                []*node
-	taskList             map[*node][]*Job
-	binding              map[*Job]*node
+	taskList             map[*node][]*replica
+	binding              map[*replica]*node
 	// background
 	bw  *bandwidth
-	w   table                     // computation cost
-	c   map[*Job]map[*Job]float64 // communication cost between two jobs
-	AFT map[*Job]float64          // the actual finished time of t_i
-	EST table                     // the earliest starting time of t_i on p_j
-	EFT table                     // the earliest finished time of t_i on p_j
+	w   table                             // computation cost
+	c   map[*replica]map[*replica]float64 // communication cost between two jobs
+	AFT map[*replica]float64              // the actual finished time of t_i
+	EST table                             // the earliest starting time of t_i on p_j
+	EFT table                             // the earliest finished time of t_i on p_j
 	// IPPTS specific
 	PCM     table
-	rankPCM map[*Job]float64
-	Prank   map[*Job]float64
+	rankPCM map[*replica]float64
+	Prank   map[*replica]float64
 	LHET    table
 	Lhead   table
 }
@@ -40,22 +40,22 @@ func createIPPTS(jobs []*Job, nodes []*node, bw *bandwidth) *ippts {
 		}
 	}
 
-	taskList := map[*node][]*Job{}
+	taskList := map[*node][]*replica{}
 	for _, n := range nodes {
-		taskList[n] = []*Job{}
+		taskList[n] = []*replica{}
 	}
 
 	// init AFT,EST,EFT
-	AFT := map[*Job]float64{}
+	AFT := map[*replica]float64{}
 	EST := table{}
 	EFT := table{}
-	for _, j := range jobs {
-		AFT[j] = math.MaxFloat64
-		EST[j] = map[*node]float64{}
-		EFT[j] = map[*node]float64{}
+	for _, r := range replicas {
+		AFT[r] = math.MaxFloat64
+		EST[r] = map[*node]float64{}
+		EFT[r] = map[*node]float64{}
 		for _, n := range nodes {
-			EST[j][n] = -1.0
-			EFT[j][n] = -1.0
+			EST[r][n] = -1.0
+			EFT[r][n] = -1.0
 		}
 	}
 
@@ -66,24 +66,24 @@ func createIPPTS(jobs []*Job, nodes []*node, bw *bandwidth) *ippts {
 		replicas:             replicas,
 		nodes:                nodes,
 		taskList:             taskList,
-		binding:              map[*Job]*node{},
+		binding:              map[*replica]*node{},
 		bw:                   bw,
 		w:                    table{},
-		c:                    map[*Job]map[*Job]float64{},
+		c:                    map[*replica]map[*replica]float64{},
 		AFT:                  AFT,
 		EST:                  EST,
 		EFT:                  EFT,
 		PCM:                  table{},
-		rankPCM:              map[*Job]float64{},
-		Prank:                map[*Job]float64{},
+		rankPCM:              map[*replica]float64{},
+		Prank:                map[*replica]float64{},
 		LHET:                 table{},
 		Lhead:                table{},
 	}
 }
 
-func (p *ippts) allocation(){
+func (p *ippts) allocation() {
 	p.calcTime()
-	
+
 	p.calcPCM()
 	p.calcRankPCMandPrank()
 	p.calcLHET()
@@ -94,15 +94,21 @@ func (p *ippts) allocation(){
 	p.decideNode()
 }
 
-func (p *ippts) simulate() float64{
+func (p *ippts) simulate() (float64, float64) {
 	p.allocation()
-	allocManager := intervalAllocManager{current: 0}
-	sort.Slice(p.jobs, func(i, j int) bool {
-		return p.Prank[p.jobs[i]] < p.Prank[p.jobs[j]]
+	allocManager := intervalAllocManager{
+		totalCapacity: []float64{},
+		totalAllocte:  []float64{0.0, 0.0},
+		totalUsage:    []float64{0.0, 0.0},
+		current:       0,
+	}
+	allocManager.initCapacity(p.nodes)
+	sort.Slice(p.replicas, func(i, j int) bool {
+		return p.Prank[p.replicas[i]] < p.Prank[p.replicas[j]]
 	})
 
 	queue := []*replica{}
-	scheduledReplica := map[*replica]bool{}
+	scheduledJob := map[*Job]bool{}
 	for _, j := range p.jobs {
 		j.predictTime(0.0)
 		if len(j.parent) == 0 {
@@ -112,78 +118,78 @@ func (p *ippts) simulate() float64{
 
 	for len(queue) > 0 {
 		replica := queue[0]
+		job := replica.job
+		if _, exist := scheduledJob[job]; exist {
+			queue = queue[1:]
+			continue
+		}
 
 		done := p.tryNode(replica)
-		allParentDone := replica.job.allParentDone()
-		if done && allParentDone {
+		oneParentDone := job.oneParentReplicaDone()
+		if done && oneParentDone {
 
-			fmt.Println("Replica ID:", replica.job.ID, ",Select Node ID:", replica.node.ID)
-			scheduledReplica[replica] = true
+			// fmt.Println("Replica ID:", replica.job.ID, ",Select Node ID:", replica.node.ID)
+			scheduledJob[job] = true
 			queue = queue[1:]
 			allocManager.allocate(replica)
 
 			// is child need to been consider??
-			for _, childReplica := range replica.children {
-				_, exist := scheduledReplica[childReplica]
-				if childReplica.allParentScheduled(scheduledReplica) && !exist {
-					queue = append(queue, childReplica)
+			for _, childJob := range job.children {
+				_, exist := scheduledJob[childJob]
+				if childJob.allParentScheduled(scheduledJob) && !exist {
+					for _, childReplica:= range childJob.replicas{
+						queue = append(queue, childReplica)
+					}
 				}
 			}
 		} else {
 			allocManager.nextInterval()
-			fmt.Printf("updateCurrent time: %.2f\n", allocManager.current)
+			// fmt.Printf("updateCurrent time: %.2f\n", allocManager.current)
 			_ = allocManager.releaseResource()
-			if allocManager.current==math.MaxFloat64{
-				return 0.0
+			if allocManager.current == math.MaxFloat64 {
+				return 0.0, 0.0
 			}
 		}
-		
+
 	}
-	fmt.Printf("makespan = %.2f\n", allocManager.getMakespan())
-	return allocManager.getMakespan()
+	// fmt.Printf("makespan = %.2f\n", allocManager.getMakespan())
+	return allocManager.getResult()
 }
 
-func (p *ippts) tryNode(r *replica)bool{
+func (p *ippts) tryNode(r *replica) bool {
 	node := r.node
-	cpuCapacity := node.cpu-node.allocatedCpu
-	memCapacity := node.mem-node.allocatedMem
-	if r.job.replicaCpu<=cpuCapacity && r.job.replicaMem<=memCapacity{
+	cpuCapacity := node.cpu - node.allocatedCpu
+	memCapacity := node.mem - node.allocatedMem
+	if r.job.replicaCpu <= cpuCapacity && r.job.replicaMem <= memCapacity {
 		return true
-	}else{
+	} else {
 		return false
 	}
 }
 
-
-func (p *ippts) calcTime(){
-	for _, j := range p.jobs {
-		if _, ok := p.c[j]; !ok {
-			p.c[j] = map[*Job]float64{}
-		}
-		for _, child := range j.children {
-			dataSize := 0.0
-			for _, r := range j.replicas {
-				dataSize += r.finalDataSize[child]
-			}
-			dataSize /= float64(j.replicaNum)
-			p.c[j][child] = dataSize / p.averageBandwidth
+func (p *ippts) calcTime() {
+	for _, r := range p.replicas {
+		if _, ok := p.c[r]; !ok {
+			p.c[r] = map[*replica]float64{}
 		}
 
-		maxExecutionTime := 0.0
-		for _, replica := range j.replicas {
-			var executionTime float64 = 0
-			for _, action := range replica.actions {
-				executionTime += action.executionTime
+		for _, child := range r.job.children {
+			for _, childReplica := range child.replicas {
+				p.c[r][childReplica] = r.finalDataSize[child] / p.averageBandwidth
 			}
-			if executionTime > maxExecutionTime {
-				maxExecutionTime = executionTime
-			}
+
 		}
-		if _, ok := p.w[j]; !ok {
-			p.w[j] = map[*node]float64{}
+
+		var executionTime float64 = 0
+		for _, action := range r.actions {
+			executionTime += action.executionTime
+		}
+
+		if _, ok := p.w[r]; !ok {
+			p.w[r] = map[*node]float64{}
 		}
 		for _, node := range p.nodes {
-			p.w[j][node] = maxExecutionTime * node.executionRate
+			p.w[r][node] = executionTime / node.executionRate
 		}
 	}
 	// for _,j:=range p.jobs{
@@ -198,85 +204,85 @@ func (p *ippts) calcTime(){
 	// 		fmt.Println("  execute on nodeID:" , node.ID , ",execution Time:",p.w[j][node])
 	// 	}
 	// }
+
 }
 
-func (p *ippts) calcPCM(){
-	var dfs func(*Job)
-	dfs = func(j *Job) {
-		if _, ok := p.PCM[j]; ok {
+func (p *ippts) calcPCM() {
+	var dfs func(*replica)
+	dfs = func(r *replica) {
+		if _, ok := p.PCM[r]; ok {
 			return
-		}else{
-			p.PCM[j] = map[*node]float64{}
+		} else {
+			p.PCM[r] = map[*node]float64{}
 		}
 
-		if len(j.children)==0{
-			for _, n:=range p.nodes{
-				p.PCM[j][n]=p.w[j][n]
+		if len(r.children) == 0 {
+			for _, n := range p.nodes {
+				p.PCM[r][n] = p.w[r][n]
 			}
 		}
 
-		for _, n:=range p.nodes{
-			max:=0.0
-			for _, child := range j.children{
-				min:=math.MaxFloat64
-				dfs(child)
-				for _, cn := range p.nodes{
-					sum := p.PCM[child][cn]
-					sum += p.w[j][n]
-					sum += p.w[child][cn]
-					if cn!=n{
-						sum += p.c[j][child]
-					}
-					if min>sum{
-						min=sum
-					}
-				}
-				if max<min{
-					max=min
-				}
-			}
-			p.PCM[j][n]=max
-		}
-	}
-	for _, j := range p.jobs {
-		dfs(j)
-	}
-}
-
-func (p *ippts) calcLHET(){
-	for _, j:=range p.jobs{
-		p.LHET[j] = map[*node]float64{}
-		for _, n:=range p.nodes{
-			p.LHET[j][n]=p.PCM[j][n]-p.w[j][n]
-		}
-	}
-}
-
-func (p *ippts) calcRankPCMandPrank(){
-	for _, j:=range p.jobs{
-		nodeCount := len(p.nodes)
-		sum :=0.0
-		for _, n:=range p.nodes{
-			sum += p.PCM[j][n]
-		}
-		p.rankPCM[j]=sum/float64(nodeCount)
-		outd:=float64(len(j.children))
-		p.Prank[j] = p.rankPCM[j]*outd
-	}
-}		
-
-func (p *ippts) calcEFT(){
-	for _, j := range p.jobs {
-		p.AFT[j] = math.MaxFloat64
 		for _, n := range p.nodes {
-			p.getEST(j, n) // calc EST[j][n]
+			max := 0.0
+			for _, child := range r.children {
+				min := math.MaxFloat64
+				dfs(child)
+				for _, cn := range p.nodes {
+					sum := p.PCM[child][cn]
+					sum += p.w[r][n]
+					sum += p.w[child][cn]
+					if cn != n {
+						sum += p.c[r][child]
+					}
+					if min > sum {
+						min = sum
+					}
+				}
+				if max < min {
+					max = min
+				}
+			}
+			p.PCM[r][n] = max
 		}
-		selectNode := p.binding[j]
-		p.taskList[selectNode] = append(p.taskList[selectNode], j)
+	}
+	for _, r := range p.replicas {
+		dfs(r)
+	}
+}
+
+func (p *ippts) calcLHET() {
+	for _, r := range p.replicas {
+		p.LHET[r] = map[*node]float64{}
+		for _, n := range p.nodes {
+			p.LHET[r][n] = p.PCM[r][n] - p.w[r][n]
+		}
+	}
+}
+
+func (p *ippts) calcRankPCMandPrank() {
+	for _, r := range p.replicas {
+		nodeCount := len(p.nodes)
+		sum := 0.0
+		for _, n := range p.nodes {
+			sum += p.PCM[r][n]
+		}
+		p.rankPCM[r] = sum / float64(nodeCount)
+		outd := float64(len(r.children))
+		p.Prank[r] = p.rankPCM[r] * outd
+	}
+}
+
+func (p *ippts) calcEFT() {
+	for _, r := range p.replicas {
+		p.AFT[r] = math.MaxFloat64
+		for _, n := range p.nodes {
+			p.getEST(r, n) // calc EST[r][n]
+		}
+		selectNode := p.binding[r]
+		p.taskList[selectNode] = append(p.taskList[selectNode], r)
 		p.sortTaskList(selectNode)
 	}
 }
-
 
 func (p *ippts) sortTaskList(n *node) {
 	sort.Slice(p.taskList[n], func(i, j int) bool {
@@ -286,9 +292,9 @@ func (p *ippts) sortTaskList(n *node) {
 	})
 }
 
-func (p *ippts) getEST(j *Job, n *node) {
+func (p *ippts) getEST(r *replica, n *node) {
 	est := 0.0
-	for _, parent := range j.parent {
+	for _, parent := range r.parent {
 		if p.binding[parent] == nil {
 			for _, n := range p.nodes {
 				p.getEST(parent, n)
@@ -300,7 +306,7 @@ func (p *ippts) getEST(j *Job, n *node) {
 		parentNode := p.binding[parent]
 		c := 0.0
 		if p.binding[parent] != n {
-			c = p.c[parent][j] * p.averageBandwidth / p.bw.values[parentNode][n]
+			c = p.c[parent][r] * p.averageBandwidth / p.bw.values[parentNode][n]
 		}
 		est = math.Max(est, p.AFT[parent]+c)
 	}
@@ -327,53 +333,50 @@ func (p *ippts) getEST(j *Job, n *node) {
 	}
 	for _, slot := range freeTimes {
 
-		if est < slot[0] && slot[0]+p.w[j][n] <= slot[1] {
+		if est < slot[0] && slot[0]+p.w[r][n] <= slot[1] {
 			est = slot[0]
 			break
 		}
-		if est >= slot[0] && est+p.w[j][n] <= slot[1] {
+		if est >= slot[0] && est+p.w[r][n] <= slot[1] {
 			break
 		}
 	}
-	p.EST[j][n] = est
-	p.EFT[j][n] = p.EST[j][n] + p.w[j][n]
-	if p.EFT[j][n] < p.AFT[j] {
-		p.AFT[j] = p.EFT[j][n]
-		p.binding[j] = n
+	p.EST[r][n] = est
+	p.EFT[r][n] = p.EST[r][n] + p.w[r][n]
+	if p.EFT[r][n] < p.AFT[r] {
+		p.AFT[r] = p.EFT[r][n]
+		p.binding[r] = n
 	}
 }
 
-func (p *ippts) calcLhead(){
-	for _, j := range p.jobs{
-		p.Lhead[j] = map[*node]float64{}
-		for _, n := range p.nodes{
-			p.Lhead[j][n] = p.EFT[j][n] + p.LHET[j][n]
-		}
-	}
-
-	for _, j := range p.jobs {
-		fmt.Printf("job ID:%d\n", j.ID)
+func (p *ippts) calcLhead() {
+	for _, r := range p.replicas {
+		p.Lhead[r] = map[*node]float64{}
 		for _, n := range p.nodes {
-			fmt.Printf("  Node ID:%d, Lhead: %.1f\n", n.ID, p.Lhead[j][n])
+			p.Lhead[r][n] = p.EFT[r][n] + p.LHET[r][n]
 		}
 	}
+
+	// for _, r := range p.replicas {
+	// 	fmt.Printf("replica ID:%d\n", r.ID)
+	// 	for _, n := range p.nodes {
+	// 		fmt.Printf("  Node ID:%d, Lhead: %.1f\n", n.ID, p.Lhead[r][n])
+	// 	}
+	// }
 }
 
-func (p *ippts) decideNode(){
-	for _, j :=range p.jobs{
-		var selectNode *node
+func (p *ippts) decideNode() {
+	for _, r := range p.replicas {
+		j := r.job
 		min := math.MaxFloat64
-		for _, n :=range p.nodes{
-			if n.cpu < j.replicaCpu || n.mem < j.replicaMem{
+		for _, n := range p.nodes {
+			if n.cpu < j.replicaCpu || n.mem < j.replicaMem {
 				continue
 			}
-			if min>p.Lhead[j][n]{
-				min = p.Lhead[j][n]
-				selectNode = n
+			if min > p.Lhead[r][n] {
+				min = p.Lhead[r][n]
+				r.node = n
 			}
-		}
-		for _, r := range j.replicas{
-			r.node = selectNode
 		}
 	}
 }

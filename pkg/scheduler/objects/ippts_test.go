@@ -18,8 +18,8 @@ func TestCalcPCM(t *testing.T) {
 
 func TestAllocation(t *testing.T) {
 	nodes, bw := createRandNode()
-	jobsDag := createStaticJobDAG()
-	// jobsDag := generateRandomDAG()
+	// jobsDag := createStaticJobDAG()
+	jobsDag := generateRandomDAG()
 	p := createIPPTS(jobsDag.Vectors, nodes, bw)
 	p.allocation()
 }

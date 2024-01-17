@@ -7,6 +7,7 @@ import (
 
 type JobsDAG struct {
 	Vectors []*Job
+	replicasCount int
 }
 
 type Job struct {
@@ -95,6 +96,15 @@ func (job *Job) allParentDone() bool {
 	return true
 }
 
+func (job *Job) oneParentReplicaDone()bool{
+	for _, parent := range job.parent {
+		if parent.finish < 1 {
+			return false
+		}
+	}
+	return true
+}
+
 func (replica *replica) allParentScheduled(scheduledReplica map[*replica]bool) bool {
 	for _, parent := range replica.parent {
 		if scheduledReplica[parent] == false {
@@ -107,7 +117,7 @@ func (replica *replica) allParentScheduled(scheduledReplica map[*replica]bool) b
 func (job *Job) decideNode(nodes []*node, bw *bandwidth) bool {
 	job.makespan = 0
 	doneReplica := []*replica{}
-
+	// availableTime:= map[*node]float64{}
 	for idx, replica := range job.replicas {
 		replica.minValue = math.MaxFloat64
 		
@@ -132,7 +142,7 @@ func (job *Job) decideNode(nodes []*node, bw *bandwidth) bool {
 			// transmission time + Execution time "Inside" the Job
 			for _, action := range replica.actions {
 				var transmissionTime, executionTime float64
-				executionTime = action.executionTime * node.executionRate
+				executionTime = action.executionTime / node.executionRate
 				transmissionTime = 0
 				if idx != 0 {
 					for i := 0; i < idx; i++ {
@@ -144,6 +154,7 @@ func (job *Job) decideNode(nodes []*node, bw *bandwidth) bool {
 							curTransmissionTime = 0
 						} else {
 							curTransmissionTime = datasize / bw.values[from][to]
+						    // fmt.Println(datasize, bw.values[from][to], curTransmissionTime)
 						}
 
 						if transmissionTime < curTransmissionTime {
@@ -167,6 +178,7 @@ func (job *Job) decideNode(nodes []*node, bw *bandwidth) bool {
 						curTransmissionTime = 0
 					} else {
 						curTransmissionTime = datasize / bw.values[from][to]
+						// fmt.Println(datasize, bw.values[from][to], curTransmissionTime)
 					}
 
 					if transmissionTime < curTransmissionTime {

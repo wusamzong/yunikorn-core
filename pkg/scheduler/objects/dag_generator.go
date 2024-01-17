@@ -7,10 +7,10 @@ import (
 )
 
 const (
-	minPerRank      = 3 // Nodes/Rank: How 'fat' the DAG should be.
-	maxPerRank      = 3
-	minRanks        = 5 // Ranks: How 'tall' the DAG should be.
-	maxRanks        = 5
+	minPerRank      = 5 // Nodes/Rank: How 'fat' the DAG should be.
+	maxPerRank      = 5
+	minRanks        = 10 // Ranks: How 'tall' the DAG should be.
+	maxRanks        = 10
 	percent         = 20 // Chance of having an Edge.
 	filePath        = "dag02.yaml"
 	appConfigPath   = "../workflow-config.yaml"
@@ -18,24 +18,31 @@ const (
 	KwokPodTemplate = "kwok-pod-template.yaml"
 )
 
-type comparisonConfig struct{
-	times      int
+type comparisonConfig struct {
+	podCount   int
+	times      int64
 	randomSeed int
 	// about DAG
+	width      int
 	minPerRank int
 	maxPerRank int
-	minRanks int
-	maxRanks int
-	percent  int
+	minRanks   int
+	maxRanks   int
+	percent    int
 	// about Job
-	replicaNumRange int
+	replicaNum      int
 	replicaCPURange int
 	replicaMemRange int
-	actionNum int
+	actionNum       int
 	// about node
-	nodeCount int
-	nodeCPURange int
-	nodeMemRange int
+	nodeCount             int
+	nodeCPURange          int
+	nodeMemRange          int
+	ccr                   float64
+	rrc                   float64
+	speedHeterogeneity    float64
+	resourceHeterogeneity float64
+	averageNodeResource   float64
 }
 
 type Edge struct {
@@ -54,11 +61,10 @@ func generateRandomDAG() *JobsDAG {
 	DependencyStruct := map[int][]int{}
 
 	// 1. create dependency
-	fmt.Println("digraph {")
+	// fmt.Println("digraph {")
 	for i := 0; i < ranks; i++ {
 		// New nodes of 'higher' rank than all nodes generated till now.
 		newNodes := minPerRank + rand.Intn(maxPerRank-minPerRank+1)
-
 		// Edges from old nodes ('nodes') to new ones ('newNodes').
 		for j := 0; j < nodes; j++ {
 			for k := 0; k < newNodes; k++ {
@@ -70,13 +76,13 @@ func generateRandomDAG() *JobsDAG {
 					createdJobs[j] = true
 					createdJobs[k+nodes] = true
 					DependencyStruct[j] = append(DependencyStruct[j], k+nodes)
-					fmt.Printf("  %d -> %d ;\n", j, k+nodes) // An Edge.
+					// fmt.Printf("  %d -> %d ;\n", j, k+nodes) // An Edge.
 				}
 			}
 		}
 		nodes += newNodes // Accumulate into old node set.
 	}
-	fmt.Println("}")
+	// fmt.Println("}")
 
 	// 2. format jobId
 	tmpJobID := []int{}
@@ -88,7 +94,6 @@ func generateRandomDAG() *JobsDAG {
 	for idx, value := range tmpJobID {
 		formatedJobID[value] = idx
 	}
-	fmt.Println(formatedJobID)
 
 	// 3. create jobs by dependency
 	for _, value := range formatedJobID {
@@ -132,9 +137,10 @@ func generateRandomDAG() *JobsDAG {
 
 func generateRandomDAGWithConfig(config comparisonConfig) *JobsDAG {
 	jobsDAG := &JobsDAG{
-		Vectors: []*Job{},
+		Vectors:       []*Job{},
+		replicasCount: 0,
 	}
-	ranks := config.minRanks + rand.Intn(config.maxRanks-config.minRanks+1)
+
 	nodes := 0
 	edges := []Edge{}
 	createdJobs := map[int]bool{}
@@ -142,15 +148,20 @@ func generateRandomDAGWithConfig(config comparisonConfig) *JobsDAG {
 	DependencyStruct := map[int][]int{}
 
 	// 1. create dependency
-	fmt.Println("digraph {")
-	for i := 0; i < ranks; i++ {
+	// fmt.Println("digraph {")
+	for len(createdJobs)*config.replicaNum < config.podCount {
 		// New nodes of 'higher' rank than all nodes generated till now.
-		newNodes := config.minPerRank + rand.Intn(config.maxPerRank-config.minPerRank+1)
-
+		newNodes := config.width
+		// fmt.Println("add number of nodes: ", newNodes)
+		// fmt.Println(newNodes+nodes, config.podCount)
+		
 		// Edges from old nodes ('nodes') to new ones ('newNodes').
 		for j := 0; j < nodes; j++ {
 			for k := 0; k < newNodes; k++ {
-				if rand.Intn(100) < config.percent {
+				if len(createdJobs)*config.replicaNum>=config.podCount{
+					break
+				}
+				if rand.Intn(100) <= config.percent {
 					edge := Edge{
 						Idx: fmt.Sprintf("%d-%d", j, k+nodes),
 					}
@@ -158,39 +169,45 @@ func generateRandomDAGWithConfig(config comparisonConfig) *JobsDAG {
 					createdJobs[j] = true
 					createdJobs[k+nodes] = true
 					DependencyStruct[j] = append(DependencyStruct[j], k+nodes)
-					fmt.Printf("  %d -> %d ;\n", j, k+nodes) // An Edge.
+					// fmt.Printf("  %d -> %d ;\n", j, k+nodes) // An Edge.
 				}
 			}
 		}
 		nodes += newNodes // Accumulate into old node set.
 	}
-	fmt.Println("}")
-
+	// fmt.Println("}")
+	
 	// 2. format jobId
 	tmpJobID := []int{}
 	for key := range createdJobs {
 		tmpJobID = append(tmpJobID, key)
 	}
 	sort.Ints(tmpJobID)
+
 	formatedJobID := map[int]int{}
 	for idx, value := range tmpJobID {
 		formatedJobID[value] = idx
 	}
-	fmt.Println(formatedJobID)
+	// fmt.Println(formatedJobID)
 
 	// 3. create jobs by dependency
 	for _, value := range formatedJobID {
+		replicaNum := config.replicaNum
+		// fmt.Println(replicaNum)
+		replicaCpu := (rand.Int()%config.replicaCPURange + 1) * 500
+		replicaMem := (rand.Int()%config.replicaMemRange + 1) * 512
 		job := &Job{
 			ID:         value,
-			replicaNum: rand.Int()%config.replicaNumRange + 1,
-			replicaCpu: (rand.Int()%config.replicaCPURange + 1) * 2 * 1000,
-			replicaMem: (rand.Int()%config.replicaMemRange + 1) * 2 * 1024,
-			actionNum:  rand.Int()%config.actionNum + 1,
+			replicaNum: replicaNum,
+			replicaCpu: replicaCpu,
+			replicaMem: replicaMem,
+			actionNum:  rand.Intn(config.actionNum) + 1,
 			parent:     []*Job{},
 			children:   []*Job{},
 			finish:     0,
 		}
 		createRandReplica(job)
+		jobsDAG.replicasCount += replicaNum
 		job.predictExecutionTime = job.predictTime(0.0)
 		jobsDAG.Vectors = append(jobsDAG.Vectors, job)
 	}
@@ -215,6 +232,102 @@ func generateRandomDAGWithConfig(config comparisonConfig) *JobsDAG {
 			r.parent = parentReplicas
 		}
 	}
+	// fmt.Println(jobsDAG.replicasCount)
+	return jobsDAG
+}
+
+func simulateGenerateRandomDAGWithConfig(config comparisonConfig) *JobsDAG {
+	jobsDAG := &JobsDAG{
+		Vectors:       []*Job{},
+		replicasCount: 0,
+	}
+	ranks := config.minRanks + rand.Intn(config.maxRanks-config.minRanks+1)
+	nodes := 0
+	edges := []Edge{}
+	createdJobs := map[int]bool{}
+	// will storage parent of nodes
+	DependencyStruct := map[int][]int{}
+
+	// 1. create dependency
+	// fmt.Println("digraph {")
+	for i := 0; i < ranks; i++ {
+		// New nodes of 'higher' rank than all nodes generated till now.
+		newNodes := config.minPerRank + rand.Intn(config.maxPerRank-config.minPerRank+1)
+
+		// Edges from old nodes ('nodes') to new ones ('newNodes').
+		for j := 0; j < nodes; j++ {
+			for k := 0; k < newNodes; k++ {
+				if rand.Intn(100) < config.percent {
+					edge := Edge{
+						Idx: fmt.Sprintf("%d-%d", j, k+nodes),
+					}
+					edges = append(edges, edge)
+					createdJobs[j] = true
+					createdJobs[k+nodes] = true
+					DependencyStruct[j] = append(DependencyStruct[j], k+nodes)
+					// fmt.Printf("  %d -> %d ;\n", j, k+nodes) // An Edge.
+				}
+			}
+		}
+		nodes += newNodes // Accumulate into old node set.
+	}
+	// fmt.Println("}")
+
+	// 2. format jobId
+	tmpJobID := []int{}
+	for key := range createdJobs {
+		tmpJobID = append(tmpJobID, key)
+	}
+	// sort.Ints(tmpJobID)
+	formatedJobID := map[int]int{}
+	for idx, value := range tmpJobID {
+		formatedJobID[value] = idx
+	}
+	// fmt.Println(formatedJobID)
+
+	// 3. create jobs by dependency
+	for _, value := range formatedJobID {
+		replicaNum := rand.Int()%config.replicaNum + 1
+		// fmt.Println(replicaNum)
+		replicaCpu := (rand.Int()%config.replicaCPURange + 1) * 2 * 1000
+		replicaMem := (rand.Int()%config.replicaMemRange + 1) * 2 * 1024
+		job := &Job{
+			ID:         value,
+			replicaNum: replicaNum,
+			replicaCpu: replicaCpu,
+			replicaMem: replicaMem,
+			actionNum:  rand.Int()%config.actionNum + 1,
+			parent:     []*Job{},
+			children:   []*Job{},
+			finish:     0,
+		}
+		createRandReplica(job)
+		jobsDAG.replicasCount += replicaNum
+		// job.predictExecutionTime = job.predictTime(0.0)
+		// jobsDAG.Vectors = append(jobsDAG.Vectors, job)
+	}
+
+	// 4. establish relationship for jobs
+	// for idx, children := range DependencyStruct {
+	// 	idx := formatedJobID[idx]
+	// 	for _, childID := range children {
+	// 		childID = formatedJobID[childID]
+	// 		vectors := jobsDAG.Vectors
+	// 		vectors[idx].children = append(vectors[idx].children, vectors[childID])
+	// 	}
+	// }
+	// jobsDAG = ChildToParent(jobsDAG)
+
+	// 5. create relationship between replicas
+	// for _, j := range jobsDAG.Vectors {
+	// 	childrenReplicas := j.getChildrenReplica()
+	// 	parentReplicas := j.getParentReplica()
+	// 	for _, r := range j.replicas {
+	// 		r.children = childrenReplicas
+	// 		r.parent = parentReplicas
+	// 	}
+	// }
+	// fmt.Println(jobsDAG.replicasCount)
 	return jobsDAG
 }
 
@@ -234,18 +347,18 @@ func createRandReplica(j *Job) {
 	}
 
 	for i := 0; i < j.actionNum; i++ {
-		randExecutionTime := rand.Float64() * 1000
+		randExecutionTime := rand.Float64() * 10000
 		for _, r := range j.replicas {
 			a := r.createAction(randExecutionTime)
 			for _, r := range j.replicas {
-				a.datasize[r] = rand.Float64() * 1000
+				a.datasize[r] = rand.Float64() * 10000
 			}
 		}
 	}
 
 	for _, r := range j.replicas {
 		for _, child := range j.children {
-			r.finalDataSize[child] = rand.Float64() * 10000
+			r.finalDataSize[child] = rand.Float64() * 100000
 		}
 	}
 }
