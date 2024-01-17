@@ -66,15 +66,15 @@ func (am *intervalAllocManager) allocate(request interface{}) {
 		allocation := &intervalAlloc{
 			replica:      replica,
 			start:        am.current,
-			end:          am.current + job.predictExecutionTime*float64(job.replicaNum),
+			end:          am.current + job.predictExecutionTime,
 			node:         replica.node,
 			allocatedCpu: job.replicaCpu,
 			allocatedMem: job.replicaMem,
 		}
 		replica.node.allocatedCpu += job.replicaCpu
 		replica.node.allocatedMem += job.replicaMem
-		am.totalAllocte[0] += float64(job.replicaCpu)*job.predictExecutionTime*float64(job.replicaNum)
-		am.totalAllocte[1] += float64(job.replicaMem)*job.predictExecutionTime*float64(job.replicaNum)
+		am.totalAllocte[0] += float64(job.replicaCpu)*job.predictExecutionTime
+		am.totalAllocte[1] += float64(job.replicaMem)*job.predictExecutionTime
 		am.allocations = append(am.allocations, allocation)
 	} else {
 		fmt.Println("The type ", request, " isn't exist")

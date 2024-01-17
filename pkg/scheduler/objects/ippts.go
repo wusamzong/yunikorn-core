@@ -108,7 +108,8 @@ func (p *ippts) simulate() (float64, float64) {
 	})
 
 	queue := []*replica{}
-	scheduledJob := map[*Job]bool{}
+	// scheduledJob := map[*Job]bool{}
+	scheduledReplica := map[*replica]bool{}
 	for _, j := range p.jobs {
 		j.predictTime(0.0)
 		if len(j.parent) == 0 {
@@ -118,28 +119,21 @@ func (p *ippts) simulate() (float64, float64) {
 
 	for len(queue) > 0 {
 		replica := queue[0]
-		job := replica.job
-		if _, exist := scheduledJob[job]; exist {
-			queue = queue[1:]
-			continue
-		}
 
 		done := p.tryNode(replica)
-		oneParentDone := job.oneParentReplicaDone()
-		if done && oneParentDone {
+		allParentDone := replica.allParentScheduled(scheduledReplica)
+		if done && allParentDone {
 
 			// fmt.Println("Replica ID:", replica.job.ID, ",Select Node ID:", replica.node.ID)
-			scheduledJob[job] = true
+			scheduledReplica[replica] = true
 			queue = queue[1:]
 			allocManager.allocate(replica)
 
 			// is child need to been consider??
-			for _, childJob := range job.children {
-				_, exist := scheduledJob[childJob]
-				if childJob.allParentScheduled(scheduledJob) && !exist {
-					for _, childReplica:= range childJob.replicas{
-						queue = append(queue, childReplica)
-					}
+			for _, childreplica := range replica.children {
+				_, exist := scheduledReplica[childreplica]
+				if childreplica.allParentScheduled(scheduledReplica) && !exist {
+					queue = append(queue, childreplica)
 				}
 			}
 		} else {
