@@ -59,8 +59,8 @@ func testWithCase(seed int64, podCount int, alpha float64, density float64, repl
 	config.width = width
 	config.percent = int(density * 10)
 	config.replicaNum = replicaCount
-	config.replicaCPURange = rand.Intn(8) + 1 // (rand.Int()%config.range + 1) * 500,
-	config.replicaMemRange = rand.Intn(8) + 1
+	config.replicaCPURange = 4 // (rand.Int()%config.range + 1) * 500,
+	config.replicaMemRange = 4
 	
 	config.nodeCount = nodeCount
 	config.ccr=CCR
@@ -70,10 +70,10 @@ func testWithCase(seed int64, podCount int, alpha float64, density float64, repl
 
 	averageNodeResource := float64(podCount/nodeCount)*RRC
 	config.averageNodeResource = averageNodeResource
-	config.nodeCPURange = config.replicaCPURange*replicaCount/2 // (rand.Int()%config.nodeCPURange + 1) * 1000
-	config.nodeMemRange = config.replicaMemRange*replicaCount/2
+	config.nodeCPURange = replicaCount*2 // (rand.Int()%config.nodeCPURange + 1) * 1000
+	config.nodeMemRange = replicaCount*2
 	
-	config.actionNum = 10
+	config.actionNum = 20
 
 	current:=[]string{}
 	for algoCount := 0; algoCount < 3; algoCount++ {
@@ -86,12 +86,14 @@ func testWithCase(seed int64, podCount int, alpha float64, density float64, repl
 		}
 
 		if algoCount == 0 {
+			// continue
 			m := createMPEFT(jobsDag.Vectors, nodes, bw)
 			// current = append(current, fmt.Sprintf("%d", jobsDag.replicasCount))
 			makespan, resourceUsage := m.simulate()
 			current = append(current, fmt.Sprintf("%.0f", makespan))
 			current = append(current, fmt.Sprintf("%.3f", resourceUsage))
 		} else if algoCount == 1 {
+			// continue
 			p := createIPPTS(jobsDag.Vectors, nodes, bw)
 			makespan, resourceUsage := p.simulate()
 			current = append(current, fmt.Sprintf("%.0f", makespan))
@@ -119,11 +121,12 @@ func createRandNodeByConfig(config comparisonConfig) ([]*node, *bandwidth) {
 	// CPU:= randomBasedOnHete(config.averageNodeResource,config.resourceHeterogeneity)
 	// Mem:= randomBasedOnHete(config.averageNodeResource,config.resourceHeterogeneity)
 	// fmt.Println(float64(config.nodeCPURange), config.resourceHeterogeneity, CPU)
+	resource := (rand.Intn(config.nodeCPURange)+2)
 	for i := 0; i < nodeCount; i++ {
 		n := &node{
 			ID:            i,
-			cpu:           (rand.Intn(config.nodeCPURange)+1)* 2 * 500,
-			mem:           (rand.Intn(config.nodeMemRange)+1)* 2 * 512,
+			cpu:           resource * 500,
+			mem:           resource * 512,
 			allocatedCpu:  0,
 			allocatedMem:  0,
 			executionRate: 1+(config.speedHeterogeneity+1.0)*rand.Float64(),

@@ -88,6 +88,9 @@ func (job *Job) allParentScheduled(scheduledJob map[*Job]bool) bool {
 }
 
 func (job *Job) allParentDone() bool {
+	if len(job.parent)==0{
+		return true
+	}
 	for _, parent := range job.parent {
 		if parent.finish != parent.replicaNum {
 			return false
@@ -207,11 +210,11 @@ func (job *Job) decideNode(nodes []*node, bw *bandwidth) bool {
 			} else {
 				dr = resourceShare[1]
 			}
-			if time*dr < replica.minValue {
+			if time < replica.minValue {
 				replica.minTime = time
 				replica.minDr = dr
 				// replica.minValue = math.Pow(time, 2) + math.Pow(dr, 2)
-				replica.minValue = time * dr
+				replica.minValue = time
 				// replica.minValue = time
 				replica.node = node
 			}
@@ -222,10 +225,39 @@ func (job *Job) decideNode(nodes []*node, bw *bandwidth) bool {
 			doneReplica = append(doneReplica, replica)
 		}
 
-		if replica.minTime > job.makespan {
-			job.makespan = replica.minTime
-		}
+		// if replica.minTime > job.makespan {
+		// 	job.makespan = replica.minTime
+		// }
 	}
+
+	var time float64
+	for _, r :=range job.replicas{
+		maxTime:=0.0	
+		for _, a := range r.actions{
+			var transmissionTime, executionTime float64
+			executionTime = a.executionTime/r.node.executionRate
+			transmissionTime = 0.0
+			maxTransmissionTime:=0.0
+			for _, child:=range r.children{
+				from:=r.node
+				to:= child.node
+				datasize := a.datasize[child]
+				if from == to{
+					transmissionTime=0.0
+				}else{
+					transmissionTime=datasize/bw.values[from][to]
+				}
+				if transmissionTime>maxTransmissionTime{
+					maxTransmissionTime=transmissionTime
+				}
+			}
+			if maxTransmissionTime+executionTime>maxTime{
+				maxTime=maxTransmissionTime+executionTime
+			}
+		}
+		time+=maxTime
+	}
+	job.makespan=time
 
 	for idx, replica := range job.replicas {
 		// fmt.Println("Job", job.ID, ",replica", idx, ",nodeID:", replica.node.ID,

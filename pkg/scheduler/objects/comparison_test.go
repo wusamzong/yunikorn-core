@@ -57,16 +57,30 @@ func RandSeq(n int) string {
 func TestParallel(t *testing.T) {
 	state := [][]int{}
 	var wg sync.WaitGroup
-	state = append(state, []int{0, 0, 0, 0, 0, 0, 0, 0})
+	// state = append(state, []int{0, 0, 0, 0, 0, 0, 0, 0})
+	// state = append(state, []int{0, 1, 0, 0, 0, 0, 0, 0})
+	// state = append(state, []int{0, 2, 0, 0, 0, 0, 0, 0})
 	state = append(state, []int{1, 0, 0, 0, 0, 0, 0, 0})
+	state = append(state, []int{1, 1, 0, 0, 0, 0, 0, 0})
+	state = append(state, []int{1, 2, 0, 0, 0, 0, 0, 0})
 	state = append(state, []int{2, 0, 0, 0, 0, 0, 0, 0})
+	state = append(state, []int{2, 1, 0, 0, 0, 0, 0, 0})
+	state = append(state, []int{2, 2, 0, 0, 0, 0, 0, 0})
 	state = append(state, []int{3, 0, 0, 0, 0, 0, 0, 0})
+	state = append(state, []int{3, 1, 0, 0, 0, 0, 0, 0})
+	state = append(state, []int{3, 2, 0, 0, 0, 0, 0, 0})
 	state = append(state, []int{4, 0, 0, 0, 0, 0, 0, 0})
+	state = append(state, []int{4, 1, 0, 0, 0, 0, 0, 0})
+	state = append(state, []int{4, 2, 0, 0, 0, 0, 0, 0})
 	state = append(state, []int{5, 0, 0, 0, 0, 0, 0, 0})
+	state = append(state, []int{5, 1, 0, 0, 0, 0, 0, 0})
+	state = append(state, []int{5, 2, 0, 0, 0, 0, 0, 0})
+	wg.Add(len(state))
 	for _, s := range state {
+		
 		go comparison(s, true, &wg)
 	}
-	wg.Add(1)
+	
 	wg.Wait()
 }
 
@@ -146,6 +160,7 @@ func comparison(state []int, isload bool, wg *sync.WaitGroup)  {
 	w, file := createWriter()
 	defer file.Close()
 	defer w.Flush()
+	defer wg.Done()
 
 	w.Write([]string{"podCount", "alpha", "density", "replicaCount", "nodeCount", "CCR", "speedHete", "MPEFT", "MPEFTusage", "IPPTS", "IPPTSusage", "CUSTOM", "CUSTOMusage"})
 
@@ -211,13 +226,16 @@ func comparison(state []int, isload bool, wg *sync.WaitGroup)  {
 										cases.replicaCount[l], cases.nodes[m], cases.CCR[n], 0.0, cases.speedHete[p], 0.0)...)
 									w.Write(current)
 									w.Flush()
+									
 								}
+								
 							}
 							// }
 						}
 					}
 				}
 			}
+			return
 		}
 	}
 

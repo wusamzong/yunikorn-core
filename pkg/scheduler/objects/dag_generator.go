@@ -194,8 +194,8 @@ func generateRandomDAGWithConfig(config comparisonConfig) *JobsDAG {
 	for _, value := range formatedJobID {
 		replicaNum := config.replicaNum
 		// fmt.Println(replicaNum)
-		replicaCpu := (rand.Int()%config.replicaCPURange + 1) * 500
-		replicaMem := (rand.Int()%config.replicaMemRange + 1) * 512
+		replicaCpu := config.replicaCPURange * 500
+		replicaMem := config.replicaMemRange * 512
 		job := &Job{
 			ID:         value,
 			replicaNum: replicaNum,

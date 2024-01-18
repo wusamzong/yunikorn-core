@@ -194,10 +194,10 @@ func createStaticJobDAG() *JobsDAG {
 	for i := 0; i < 12; i++ {
 		job := &Job{
 			ID:         i,
-			replicaNum: rand.Int()%7 + 1,
+			replicaNum: 4,
 			// replicaNum: 1,
-			replicaCpu: (rand.Int()%4 + 1) * 2 * 1000,
-			replicaMem: (rand.Int()%4 + 1) * 2 * 1024,
+			replicaCpu: 500,
+			replicaMem: 512,
 			actionNum:  rand.Int()%7 + 1,
 			children:   []*Job{},
 			finish:     0,
@@ -282,7 +282,7 @@ func Log(describe string, a any) {
 }
 
 func createRandNode() ([]*node, *bandwidth) {
-	nodeCount := 10
+	nodeCount := 4
 	nodes := []*node{}
 	bw := &bandwidth{
 		values: map[*node]map[*node]float64{},
@@ -290,8 +290,8 @@ func createRandNode() ([]*node, *bandwidth) {
 	for i := 0; i < nodeCount; i++ {
 		n := &node{
 			ID:            i,
-			cpu:           (rand.Int()%4 + 1) * 8 * 1000,
-			mem:           (rand.Int()%4 + 1) * 8 * 1024,
+			cpu:           2 * 500,
+			mem:           2 * 512,
 			allocatedCpu:  0,
 			allocatedMem:  0,
 			executionRate: rand.Float64() + 1,

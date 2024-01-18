@@ -24,11 +24,12 @@ type ippts struct {
 	EST table                             // the earliest starting time of t_i on p_j
 	EFT table                             // the earliest finished time of t_i on p_j
 	// IPPTS specific
-	PCM     table
-	rankPCM map[*replica]float64
-	Prank   map[*replica]float64
-	LHET    table
-	Lhead   table
+	PCM      table
+	rankPCM  map[*replica]float64
+	Prank    map[*replica]float64
+	jobPrank map[*Job]float64
+	LHET     table
+	Lhead    table
 }
 
 func createIPPTS(jobs []*Job, nodes []*node, bw *bandwidth) *ippts {
@@ -76,6 +77,7 @@ func createIPPTS(jobs []*Job, nodes []*node, bw *bandwidth) *ippts {
 		PCM:                  table{},
 		rankPCM:              map[*replica]float64{},
 		Prank:                map[*replica]float64{},
+		jobPrank:             map[*Job]float64{},
 		LHET:                 table{},
 		Lhead:                table{},
 	}
@@ -91,7 +93,7 @@ func (p *ippts) allocation() {
 	p.calcEFT()
 	p.calcLhead()
 
-	p.decideNode()
+	// p.decideNode()
 }
 
 func (p *ippts) simulate() (float64, float64) {
@@ -103,49 +105,62 @@ func (p *ippts) simulate() (float64, float64) {
 		current:       0,
 	}
 	allocManager.initCapacity(p.nodes)
-	sort.Slice(p.replicas, func(i, j int) bool {
-		return p.Prank[p.replicas[i]] < p.Prank[p.replicas[j]]
+
+	queue := make([]*Job, len(p.jobs))
+	copy(queue, p.jobs)
+
+	sort.Slice(queue, func(i, j int) bool {
+		return p.jobPrank[queue[i]] < p.jobPrank[queue[j]]
 	})
 
-	queue := []*replica{}
-	// scheduledJob := map[*Job]bool{}
-	scheduledReplica := map[*replica]bool{}
-	for _, j := range p.jobs {
-		j.predictTime(0.0)
-		if len(j.parent) == 0 {
-			queue = append(queue, j.replicas...)
-		}
-	}
+	scheduledJob := map[*Job]bool{}
+	// scheduledReplica := map[*replica]bool{}
 
 	for len(queue) > 0 {
-		replica := queue[0]
-
-		done := p.tryNode(replica)
-		allParentDone := replica.allParentScheduled(scheduledReplica)
-		if done && allParentDone {
-
-			// fmt.Println("Replica ID:", replica.job.ID, ",Select Node ID:", replica.node.ID)
-			scheduledReplica[replica] = true
+		reserveQueue := []*Job{}
+		for len(queue) > 0 {
+			job := queue[0]
 			queue = queue[1:]
-			allocManager.allocate(replica)
+			if _, exist := scheduledJob[job]; exist {
+				continue
+			}
+			
+			done := p.decideNode(job)
+			// allParentDone := replica.allParentScheduled(scheduledReplica)
+			allParentDone := job.allParentDone()
+			// fmt.Print("jobID:", job.ID, ", done:", done, ", allParentDone:", allParentDone, ", makespan:", job.makespan)
+			// fmt.Print(", Parent: ")
+			// for _, parent := range job.parent {
+			// 	fmt.Printf("%d ,", parent.ID)
+			// }
+			// fmt.Println()
+			if done && allParentDone {
+				// fmt.Println("allocate: ", job.ID)
+				// scheduledReplica[replica] = true
+				scheduledJob[job] = true
+				allocManager.allocate(job)
+				// for _, node := range p.nodes {
+				// 	fmt.Printf("nodeId:%d, capacity:{%d, %d}, allocated:{%d, %d}\n", node.ID, node.cpu, node.mem, node.allocatedCpu, node.allocatedMem)
+				// }
+			} else {
+				reserveQueue = append(reserveQueue, job)
 
-			// is child need to been consider??
-			for _, childreplica := range replica.children {
-				_, exist := scheduledReplica[childreplica]
-				if childreplica.allParentScheduled(scheduledReplica) && !exist {
-					queue = append(queue, childreplica)
-				}
 			}
-		} else {
-			allocManager.nextInterval()
-			// fmt.Printf("updateCurrent time: %.2f\n", allocManager.current)
-			_ = allocManager.releaseResource()
-			if allocManager.current == math.MaxFloat64 {
-				return 0.0, 0.0
-			}
+		}
+		queue = append(queue, reserveQueue...)
+		// fmt.Printf("Try Job: (j-%d (%d, %d, %d))\n", job.ID, job.replicaCpu, job.replicaMem, job.replicaNum)
+		allocManager.nextInterval()
+		// fmt.Printf("updateCurrent time: %.2f\n", allocManager.current)
+		_ = allocManager.releaseResource()
+		// for _, node := range p.nodes {
+		// 	fmt.Printf("nodeId:%d, capacity:{%d, %d}, allocated:{%d, %d}\n", node.ID, node.cpu, node.mem, node.allocatedCpu, node.allocatedMem)
+		// }
+		if allocManager.current == math.MaxFloat64 {
+			return 0.0, 0.0
 		}
 
 	}
+
 	// fmt.Printf("makespan = %.2f\n", allocManager.getMakespan())
 	return allocManager.getResult()
 }
@@ -264,6 +279,16 @@ func (p *ippts) calcRankPCMandPrank() {
 		outd := float64(len(r.children))
 		p.Prank[r] = p.rankPCM[r] * outd
 	}
+
+	for _, j := range p.jobs {
+		max := 0.0
+		for _, r := range j.replicas {
+			if p.Prank[r] > max {
+				max = p.Prank[r]
+			}
+		}
+		p.jobPrank[j] = max
+	}
 }
 
 func (p *ippts) calcEFT() {
@@ -359,18 +384,84 @@ func (p *ippts) calcLhead() {
 	// }
 }
 
-func (p *ippts) decideNode() {
-	for _, r := range p.replicas {
-		j := r.job
+// func (p *ippts) decideNode() {
+// 	for _, r := range p.replicas {
+// 		j := r.job
+// 		min := math.MaxFloat64
+// 		for _, n := range p.nodes {
+// 			if n.cpu < j.replicaCpu || n.mem < j.replicaMem {
+// 				continue
+// 			}
+// 			if min > p.Lhead[r][n] {
+// 				min = p.Lhead[r][n]
+// 				r.node = n
+// 			}
+// 		}
+// 	}
+// }
+
+func (p *ippts) decideNode(j *Job) bool {
+	doneReplica := []*replica{}
+	
+	for _, r := range j.replicas {
 		min := math.MaxFloat64
-		for _, n := range p.nodes {
-			if n.cpu < j.replicaCpu || n.mem < j.replicaMem {
+		var selectNode *node
+		for _, node := range p.nodes {
+			var currentJobCpuUsage int
+			var currentJobMemUsage int
+			for _, r := range doneReplica {
+				if r.node == node {
+					currentJobCpuUsage += j.replicaCpu
+					currentJobMemUsage += j.replicaMem
+				}
+			}
+
+			if node.cpu-node.allocatedCpu-currentJobCpuUsage < j.replicaCpu || node.mem-node.allocatedMem-currentJobMemUsage < j.replicaMem {
 				continue
 			}
-			if min > p.Lhead[r][n] {
-				min = p.Lhead[r][n]
-				r.node = n
+			if min > p.Lhead[r][node] {
+				min = p.Lhead[r][node]
+				selectNode = node
 			}
 		}
+		if selectNode == nil {
+			for _, r := range j.replicas{
+				r.node=nil
+			}
+			return false
+		}else{
+			r.node=selectNode
+		}
+		doneReplica = append(doneReplica, r)
 	}
+	var time float64
+	for _, r := range j.replicas {
+		maxTime := 0.0
+		for _, a := range r.actions {
+			var transmissionTime, executionTime float64
+			executionTime = a.executionTime / r.node.executionRate
+			transmissionTime = 0.0
+			maxTransmissionTime := 0.0
+			for _, child := range r.children {
+				from := r.node
+				to := child.node
+				datasize := a.datasize[child]
+				if from == to {
+					transmissionTime = 0.0
+				} else {
+					transmissionTime = datasize / p.bw.values[from][to]
+				}
+				if transmissionTime > maxTransmissionTime {
+					maxTransmissionTime = transmissionTime
+				}
+			}
+			if maxTransmissionTime+executionTime > maxTime {
+				maxTime = maxTransmissionTime + executionTime
+			}
+		}
+		time += maxTime
+	}
+	j.makespan = time
+
+	return true
 }

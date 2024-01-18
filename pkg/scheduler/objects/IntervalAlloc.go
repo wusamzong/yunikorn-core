@@ -99,6 +99,7 @@ func (am *intervalAllocManager) releaseResource() []*intervalAlloc {
 	for _, alloc := range releaseAlloc {
 		alloc.replica.finish = true
 		alloc.replica.job.finish++
+		// fmt.Printf("release (j-%d, r-%d) \n",alloc.replica.job.ID, alloc.replica.ID)
 		am.release(alloc)
 	}
 	// fmt.Print("release ")
@@ -146,6 +147,9 @@ func (am *intervalAllocManager) getResult() (float64, float64) {
 		if maxEndTime < alloc.end {
 			maxEndTime = alloc.end
 		}
+	}
+	if maxEndTime==0.0{
+		maxEndTime=am.current
 	}
 
 	totalUsage:=((am.totalAllocte[0]/(am.totalCapacity[0]*maxEndTime))+(am.totalAllocte[1]/(am.totalCapacity[1]*maxEndTime)))/2

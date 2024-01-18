@@ -74,13 +74,6 @@ func (c *customAlgo) simulate() (float64, float64) {
 					}
 				}
 			} else {
-				// Mandatory Prioritization
-				// heap.Push(availJobsHeap, job)
-				// allocManager.nextInterval()
-				// fmt.Printf("updateCurrent time: %.2f\n", allocManager.current)
-				// releaseAlloc := allocManager.releaseResource()
-				// fmt.Println("release", releaseAlloc)
-
 				// Allow other job to be allocated if high priority job have no enough resource
 				reserveQueue = append(reserveQueue, job)
 			}
@@ -129,6 +122,6 @@ func (c *customAlgo) simulate() (float64, float64) {
 		}
 	}
 
-	fmt.Printf("makespan = %.2f\n", allocManager.getMakespan())
+	// fmt.Printf("makespan = %.2f\n", allocManager.getMakespan())
 	return allocManager.getResult()
 }

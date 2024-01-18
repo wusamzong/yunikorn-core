@@ -1,7 +1,7 @@
 package objects
 
 import (
-	// "fmt"
+	"fmt"
 	"math/rand"
 	// "sort"
 	"testing"
@@ -25,12 +25,13 @@ func TestAllocation(t *testing.T) {
 }
 
 func TestSimulateIPPTS(t *testing.T) {
-	var randomSeed int64 = 100
+	var randomSeed int64 = 101
 	rand.Seed(randomSeed)
 	nodes, bw := createRandNode()
 	jobsDag := createStaticJobDAG()
 	p := createIPPTS(jobsDag.Vectors, nodes, bw)
-	p.simulate()
+	makespan, resourceUsage:=p.simulate()
+	fmt.Println(makespan, resourceUsage)
 	// p.allocation()
 	// allocManager := intervalAllocManager{current: 0}
 	// sort.Slice(p.jobs, func(i, j int) bool {

@@ -16,6 +16,8 @@ print("csv path:",sys.argv[1])
 df = pd.read_csv(sys.argv[1])
 
 df_filtered = df[df['CUSTOM'] != 0.0]
+df_filtered = df[df['MPEFT'] != 0.0]
+df_filtered = df[df['IPPTS'] != 0.0]
 
 results = {}
 columns_to_compare = ['MPEFT', 'IPPTS', 'CUSTOM']

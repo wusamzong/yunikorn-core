@@ -1,7 +1,7 @@
 package objects
 
 import (
-	// "fmt"
+	"fmt"
 	"math/rand"
 	// "sort"
 	"testing"
@@ -87,41 +87,6 @@ func TestSimulateMPEFT(t *testing.T) {
 	nodes, bw := createRandNode()
 	jobsDag := createStaticJobDAG()
 	m := createMPEFT(jobsDag.Vectors, nodes, bw)
-	m.simulate()
-	// m.allocation()
-	// allocManager := intervalAllocManager{current: 0}
-	// sort.Slice(m.jobs, func(i, j int) bool {
-	// 	return m.rankAP[m.jobs[i]] < m.rankAP[m.jobs[j]]
-	// })
-	// queue := []*replica{}
-	// scheduledReplica := map[*replica]bool{}
-	// for _, j := range m.jobs {
-	// 	j.predictTime(0.0)
-	// 	if len(j.parent) == 0 {
-	// 		queue = append(queue, j.replicas...)
-	// 	}
-	// }
-	// for len(queue) > 0 {
-	// 	replica := queue[0]
-	// 	done := m.tryNode(replica)
-	// 	allParentDone := replica.job.allParentDone()
-	// 	if done && allParentDone {
-	// 		fmt.Println("Replica ID:", replica.job.ID, ",Select Node ID:", replica.node.ID)
-	// 		scheduledReplica[replica] = true
-	// 		queue = queue[1:]
-	// 		allocManager.allocate(replica)
-	// 		// is child need to been consider??
-	// 		for _, childReplica := range replica.children {
-	// 			_, exist := scheduledReplica[childReplica]
-	// 			if childReplica.allParentScheduled(scheduledReplica) && !exist {
-	// 				queue = append(queue, childReplica)
-	// 			}
-	// 		}
-	// 	} else {
-	// 		allocManager.nextInterval()
-	// 		fmt.Printf("updateCurrent time: %.2f\n", allocManager.current)
-	// 		_ = allocManager.releaseResource()
-	// 	}
-	// }
-	// fmt.Printf("makespan = %.2f\n", allocManager.getMakespan())
+	makespan, resourceUsage := m.simulate()
+	fmt.Println(makespan, resourceUsage)
 }
