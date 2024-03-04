@@ -1,9 +1,9 @@
 package objects
 
 import (
+	"fmt"
 	"math"
 	"sort"
-	// "fmt"
 )
 
 // type table map[*Job]map[*node]float64
@@ -104,8 +104,14 @@ func (p *ippts) simulate() (float64, float64) {
 		totalUsage:    []float64{0.0, 0.0},
 		current:       0,
 	}
-	allocManager.initCapacity(p.nodes)
+	transManager := intervalTransmissionManager{
+		doneTransmission:   map[*replica]map[*replica]bool{},
+		customTransmission: map[*replica]map[*replica]float64{},
+		transmission:       []*intervalTransmission{},
+	}
 
+	allocManager.initCapacity(p.nodes)
+	transManager.initTransmission(p.jobs)
 	queue := make([]*Job, len(p.jobs))
 	copy(queue, p.jobs)
 
@@ -124,10 +130,11 @@ func (p *ippts) simulate() (float64, float64) {
 			if _, exist := scheduledJob[job]; exist {
 				continue
 			}
-			
+
 			done := p.decideNode(job)
 			// allParentDone := replica.allParentScheduled(scheduledReplica)
 			allParentDone := job.allParentDone()
+			// isAllParentTransmitted := transManager.transmittedStatus(job)
 			// fmt.Print("jobID:", job.ID, ", done:", done, ", allParentDone:", allParentDone, ", makespan:", job.makespan)
 			// fmt.Print(", Parent: ")
 			// for _, parent := range job.parent {
@@ -137,8 +144,11 @@ func (p *ippts) simulate() (float64, float64) {
 			if done && allParentDone {
 				// fmt.Println("allocate: ", job.ID)
 				// scheduledReplica[replica] = true
+				fmt.Println("JobID:", job.ID, " is allocated")
+				transManager.addJobInterval(job, allocManager.current, p.bw)
+				
 				scheduledJob[job] = true
-				allocManager.allocate(job)
+				allocManager.allocate(job, &transManager)
 				// for _, node := range p.nodes {
 				// 	fmt.Printf("nodeId:%d, capacity:{%d, %d}, allocated:{%d, %d}\n", node.ID, node.cpu, node.mem, node.allocatedCpu, node.allocatedMem)
 				// }
@@ -149,9 +159,11 @@ func (p *ippts) simulate() (float64, float64) {
 		}
 		queue = append(queue, reserveQueue...)
 		// fmt.Printf("Try Job: (j-%d (%d, %d, %d))\n", job.ID, job.replicaCpu, job.replicaMem, job.replicaNum)
-		allocManager.nextInterval()
+		nextInterval(&transManager, &allocManager)
 		// fmt.Printf("updateCurrent time: %.2f\n", allocManager.current)
 		_ = allocManager.releaseResource()
+		// transManager.addInterval(releaseAlloc, allocManager.current, p.bw)
+		// transManager.releaseInterval(allocManager.current)
 		// for _, node := range p.nodes {
 		// 	fmt.Printf("nodeId:%d, capacity:{%d, %d}, allocated:{%d, %d}\n", node.ID, node.cpu, node.mem, node.allocatedCpu, node.allocatedMem)
 		// }
@@ -402,7 +414,7 @@ func (p *ippts) calcLhead() {
 
 func (p *ippts) decideNode(j *Job) bool {
 	doneReplica := []*replica{}
-	
+
 	for _, r := range j.replicas {
 		min := math.MaxFloat64
 		var selectNode *node
@@ -425,17 +437,33 @@ func (p *ippts) decideNode(j *Job) bool {
 			}
 		}
 		if selectNode == nil {
-			for _, r := range j.replicas{
-				r.node=nil
+			for _, r := range j.replicas {
+				r.node = nil
 			}
 			return false
-		}else{
-			r.node=selectNode
+		} else {
+			r.node = selectNode
 		}
 		doneReplica = append(doneReplica, r)
 	}
+
 	var time float64
+	// maxReceive:=0.0
 	for _, r := range j.replicas {
+		// for _, parent := range j.parent{
+		// 	for _, parentReplica := range parent.replicas{
+		// 		data:=parentReplica.finalDataSize[j]
+		// 		from := parentReplica.node
+		// 		to := r.node
+		// 		if from==to{
+		// 			continue
+		// 		}
+		// 		if data/p.bw.values[from][to] > maxReceive{
+		// 			maxReceive=data/p.bw.values[from][to]
+		// 		}
+		// 	}
+		// }
+
 		maxTime := 0.0
 		for _, a := range r.actions {
 			var transmissionTime, executionTime float64
@@ -462,6 +490,6 @@ func (p *ippts) decideNode(j *Job) bool {
 		time += maxTime
 	}
 	j.makespan = time
-
+	// j.receiveTime=maxReceive
 	return true
 }

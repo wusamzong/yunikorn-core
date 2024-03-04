@@ -1,5 +1,4 @@
-import matplotlib.pyplot as plt
-import sys
+import glob
 import pandas as pd
 
 def compare_algorithms(df, col1, col2):
@@ -10,17 +9,20 @@ def compare_algorithms(df, col1, col2):
     return {'lower': lower, 'equal': equal, 'higher': higher}
 
 
-print("csv path:",sys.argv[1])
+path = '.'
+csv_files = glob.glob(path + "/*.csv")
+df_list = (pd.read_csv(file) for file in csv_files)
 
-# Load the CSV file
-df = pd.read_csv(sys.argv[1])
+# Concatenate all DataFrames
+big_df = pd.concat(df_list, ignore_index=True)
 
-df_filtered = df[df['CUSTOM'] != 0.0]
-df_filtered = df[df['MPEFT'] != 0.0]
-df_filtered = df[df['IPPTS'] != 0.0]
+
+df_filtered = big_df[big_df['HWS-BJ'] != 0.0]
+df_filtered = big_df[big_df['MPEFT'] != 0.0]
+df_filtered = big_df[big_df['IPPTS'] != 0.0]
 
 results = {}
-columns_to_compare = ['MPEFT', 'IPPTS', 'CUSTOM']
+columns_to_compare = ['MPEFT', 'IPPTS', 'HWS-BJ']
 
 for i, col1 in enumerate(columns_to_compare):
     for col2 in columns_to_compare[i+1:]:

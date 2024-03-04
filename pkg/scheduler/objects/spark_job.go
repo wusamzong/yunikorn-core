@@ -19,6 +19,7 @@ type Job struct {
 	predictExecutionTime float64
 	pathPriority         float64
 	makespan             float64
+	// receiveTime          float64
 	finish               int
 	replicas             []*replica
 	children             []*Job
@@ -215,10 +216,13 @@ func (job *Job) decideNode(nodes []*node, bw *bandwidth) bool {
 				replica.minDr = dr
 				// replica.minValue = math.Pow(time, 2) + math.Pow(dr, 2)
 				replica.minValue = time
+				
 				// replica.minValue = time
 				replica.node = node
 			}
+			fmt.Printf("Job: %d, replica: %d, nodeID:, %d, minValue: %.1f\n", job.ID, idx, node.ID, replica.minValue)
 		}
+		
 		if replica.node == nil {
 			return false
 		}else{
@@ -231,7 +235,22 @@ func (job *Job) decideNode(nodes []*node, bw *bandwidth) bool {
 	}
 
 	var time float64
+	// maxReceive:=0.0
 	for _, r :=range job.replicas{
+		// for _, p := range job.parent{
+		// 	for _, parentReplica := range p.replicas{
+		// 		data:=parentReplica.finalDataSize[job]
+		// 		from := parentReplica.node
+		// 		to := r.node
+		// 		if from==to{
+		// 			continue
+		// 		}
+		// 		if data/bw.values[from][to] > maxReceive{
+		// 			maxReceive=data/bw.values[from][to]
+		// 		} 
+		// 	}
+		// }
+
 		maxTime:=0.0	
 		for _, a := range r.actions{
 			var transmissionTime, executionTime float64
@@ -258,12 +277,13 @@ func (job *Job) decideNode(nodes []*node, bw *bandwidth) bool {
 		time+=maxTime
 	}
 	job.makespan=time
-
-	for idx, replica := range job.replicas {
-		// fmt.Println("Job", job.ID, ",replica", idx, ",nodeID:", replica.node.ID,
-		// 	",minTime:", replica.minTime, ",min DR:", replica.minDr, ",minValue:", replica.minValue)
-		fmt.Printf("Job: %d, replica: %d, nodeID:, %d, minTime: %.1f, minDR: %.1f, minValue: %.1f\n", job.ID, idx, replica.node.ID, replica.minTime, replica.minDr, replica.minValue)
-	}
+	// job.receiveTime=maxReceive
+	// for idx, replica := range job.replicas {
+	// 	// fmt.Println("Job", job.ID, ",replica", idx, ",nodeID:", replica.node.ID,
+	// 	// 	",minTime:", replica.minTime, ",min DR:", replica.minDr, ",minValue:", replica.minValue)
+	// 	// fmt.Printf("Job: %d, replica: %d, nodeID:, %d, minTime: %.1f, minDR: %.1f, minValue: %.1f\n", job.ID, idx, replica.node.ID, replica.minTime, replica.minDr, replica.minValue)
+	// 	// fmt.Printf("Job: %d, replica: %d, nodeID:, %d, minValue: %.1f\n", job.ID, idx, replica.node.ID, replica.minValue)
+	// }
 	return true
 }
 
@@ -345,7 +365,7 @@ func (job *Job) priority(avgExecution, avgBW float64) float64 {
 		}
 	}
 	job.pathPriority += maxPath
-	fmt.Printf("The path priority of Job %d is %.1f\n", job.ID, job.pathPriority)
+	// fmt.Printf("The path priority of Job %d is %.1f\n", job.ID, job.pathPriority)
 	return job.pathPriority
 }
 

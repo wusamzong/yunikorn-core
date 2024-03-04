@@ -206,7 +206,7 @@ func generateRandomDAGWithConfig(config comparisonConfig) *JobsDAG {
 			children:   []*Job{},
 			finish:     0,
 		}
-		createRandReplica(job)
+		createRandReplicaByCCR(job, config.ccr)
 		jobsDAG.replicasCount += replicaNum
 		job.predictExecutionTime = job.predictTime(0.0)
 		jobsDAG.Vectors = append(jobsDAG.Vectors, job)
@@ -230,6 +230,12 @@ func generateRandomDAGWithConfig(config comparisonConfig) *JobsDAG {
 		for _, r := range j.replicas {
 			r.children = childrenReplicas
 			r.parent = parentReplicas
+
+			
+			for _, child := range j.children {
+				r.finalDataSize[child] = rand.Float64() * 1000*(config.ccr/1)
+			}
+			
 		}
 	}
 	// fmt.Println(jobsDAG.replicasCount)
@@ -347,18 +353,41 @@ func createRandReplica(j *Job) {
 	}
 
 	for i := 0; i < j.actionNum; i++ {
-		randExecutionTime := rand.Float64() * 10000
+		randExecutionTime := rand.Float64() * 1000
 		for _, r := range j.replicas {
 			a := r.createAction(randExecutionTime)
 			for _, r := range j.replicas {
-				a.datasize[r] = rand.Float64() * 10000
+				a.datasize[r] = rand.Float64() * 1000
 			}
 		}
 	}
 
 	for _, r := range j.replicas {
 		for _, child := range j.children {
-			r.finalDataSize[child] = rand.Float64() * 100000
+			r.finalDataSize[child] = rand.Float64() * 10000
 		}
 	}
+}
+
+
+func createRandReplicaByCCR(j *Job, ccr float64) {
+	for i := 0; i < j.replicaNum; i++ {
+		j.createReplica()
+	}
+
+	for i := 0; i < j.actionNum; i++ {
+		randExecutionTime := rand.Float64() * 100 
+		for _, r := range j.replicas {
+			a := r.createAction(randExecutionTime)
+			for _, r := range j.replicas {
+				a.datasize[r] = rand.Float64() * 100*(ccr/1)
+			}
+		}
+	}
+
+	// for _, r := range j.replicas {
+	// 	for _, child := range j.children {
+	// 		r.finalDataSize[child] = rand.Float64() * 100000*(1-ccr)
+	// 	}
+	// }
 }

@@ -73,7 +73,7 @@ func testWithCase(seed int64, podCount int, alpha float64, density float64, repl
 	config.nodeCPURange = replicaCount*2 // (rand.Int()%config.nodeCPURange + 1) * 1000
 	config.nodeMemRange = replicaCount*2
 	
-	config.actionNum = 20
+	config.actionNum = 10
 
 	current:=[]string{}
 	for algoCount := 0; algoCount < 3; algoCount++ {
@@ -121,8 +121,8 @@ func createRandNodeByConfig(config comparisonConfig) ([]*node, *bandwidth) {
 	// CPU:= randomBasedOnHete(config.averageNodeResource,config.resourceHeterogeneity)
 	// Mem:= randomBasedOnHete(config.averageNodeResource,config.resourceHeterogeneity)
 	// fmt.Println(float64(config.nodeCPURange), config.resourceHeterogeneity, CPU)
-	resource := (rand.Intn(config.nodeCPURange)+2)
 	for i := 0; i < nodeCount; i++ {
+		resource := (rand.Intn(config.nodeCPURange)+4)
 		n := &node{
 			ID:            i,
 			cpu:           resource * 500,
@@ -148,7 +148,7 @@ func createRandNodeByConfig(config comparisonConfig) ([]*node, *bandwidth) {
 			if i == j {
 				randBandwidth = 0
 			} else {
-				randBandwidth = 1+((config.speedHeterogeneity+1.0)*rand.Float64()*config.ccr*config.ccr)
+				randBandwidth = 1+((config.speedHeterogeneity+1.0)*rand.Float64())
 				
 			}
 

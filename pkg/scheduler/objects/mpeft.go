@@ -1,7 +1,7 @@
 package objects
 
 import (
-	// "fmt"
+	"fmt"
 	"math"
 	"sort"
 	// "os"
@@ -158,12 +158,19 @@ func (m *mpeft) simulate() (float64, float64) {
 	}
 	allocManager.initCapacity(m.nodes)
 
+	transManager := intervalTransmissionManager{
+		doneTransmission:   map[*replica]map[*replica]bool{},
+		customTransmission: map[*replica]map[*replica]float64{},
+		transmission:       []*intervalTransmission{},
+	}
+	transManager.initTransmission(m.jobs)
+
 	// for _, node := range m.nodes {
 	// 	fmt.Printf("nodeId:%d, capacity:{%d, %d}, allocated:{%d, %d}\n", node.ID, node.cpu, node.mem, node.allocatedCpu, node.allocatedMem)
 	// }
 
 	queue := make([]*Job, len(m.jobs))
-	
+
 	copy(queue, m.jobs)
 
 	sort.Slice(queue, func(i, j int) bool {
@@ -182,6 +189,7 @@ func (m *mpeft) simulate() (float64, float64) {
 			}
 			done := m.decideNode(job)
 			allParentDone := job.allParentDone()
+			// isAllParentTransmitted := transManager.transmittedStatus(job)
 			// fmt.Println("jobID:", job.ID, "done:", done, ", allParentDone:", allParentDone, ", makespan:", job.makespan)
 			// fmt.Print("Parent: ")
 			// for _, parent := range job.parent {
@@ -190,25 +198,30 @@ func (m *mpeft) simulate() (float64, float64) {
 			// fmt.Println()
 			if done && allParentDone {
 				// fmt.Println("jobID:", job.ID)
+				fmt.Println("JobID:", job.ID, " is allocated")
+				transManager.addJobInterval(job, allocManager.current, m.bw)
+				
 				scheduledJob[job] = true
 
-				allocManager.allocate(job)
+				allocManager.allocate(job, &transManager)
 				// for _, node := range m.nodes {
 				// 	fmt.Printf("nodeId:%d, capacity:{%d, %d}, allocated:{%d, %d}\n", node.ID, node.cpu, node.mem, node.allocatedCpu, node.allocatedMem)
 				// 	if node.cpu<node.allocatedCpu{
 				// 		os.Exit(-1)
 				// 	}
 				// }
-				
+
 			} else {
 				reserveQueue = append(reserveQueue, job)
 			}
 		}
 		queue = append(queue, reserveQueue...)
 		// fmt.Printf("Try Job: (j-%d (%d, %d, %d))\n", job.ID, job.replicaCpu, job.replicaMem, job.replicaNum)
-		allocManager.nextInterval()
+		nextInterval(&transManager, &allocManager)
 		// fmt.Printf("updateCurrent time: %.2f\n", allocManager.current)
 		_ = allocManager.releaseResource()
+		// transManager.addInterval(releaseAlloc, allocManager.current, m.bw)
+		// transManager.releaseInterval(allocManager.current)
 		// for _, node := range m.nodes {
 		// 	fmt.Printf("nodeId:%d, capacity:{%d, %d}, allocated:{%d, %d}\n", node.ID, node.cpu, node.mem, node.allocatedCpu, node.allocatedMem)
 		// }
@@ -598,7 +611,7 @@ func (m *mpeft) calcMEFT() {
 
 func (m *mpeft) decideNode(j *Job) bool {
 	doneReplica := []*replica{}
-	
+
 	for _, r := range j.replicas {
 		min := math.MaxFloat64
 		var selectNode *node
@@ -611,12 +624,12 @@ func (m *mpeft) decideNode(j *Job) bool {
 					currentJobMemUsage += j.replicaMem
 				}
 			}
-			
-			if node.cpu-node.allocatedCpu < currentJobCpuUsage + j.replicaCpu{
+
+			if node.cpu-node.allocatedCpu < currentJobCpuUsage+j.replicaCpu {
 				continue
 			}
-			
-			if node.mem-node.allocatedMem < currentJobMemUsage + j.replicaMem{
+
+			if node.mem-node.allocatedMem < currentJobMemUsage+j.replicaMem {
 				continue
 			}
 
@@ -626,22 +639,39 @@ func (m *mpeft) decideNode(j *Job) bool {
 			}
 		}
 		if selectNode == nil {
-			for _, r := range j.replicas{
-				r.node=nil
+			for _, r := range j.replicas {
+				r.node = nil
 			}
 			return false
-		}else{
-			r.node=selectNode
+		} else {
+			r.node = selectNode
 		}
 		doneReplica = append(doneReplica, r)
 	}
 
 	var time float64
+	// maxReceive:=0.0
 	for _, r := range j.replicas {
+
+		// for _, parent := range j.parent{
+		// 	for _, parentReplica := range parent.replicas{
+		// 		data:=parentReplica.finalDataSize[j]
+		// 		from := parentReplica.node
+		// 		to := r.node
+		// 		if from==to{
+		// 			continue
+		// 		}
+		// 		if data/m.bw.values[from][to] > maxReceive{
+		// 			maxReceive=data/m.bw.values[from][to]
+		// 		}
+		// 	}
+		// }
+
 		maxTime := 0.0
 		for _, a := range r.actions {
 			var transmissionTime, executionTime float64
 			executionTime = a.executionTime / r.node.executionRate
+			
 			transmissionTime = 0.0
 			maxTransmissionTime := 0.0
 			for _, child := range r.children {
@@ -664,6 +694,6 @@ func (m *mpeft) decideNode(j *Job) bool {
 		time += maxTime
 	}
 	j.makespan = time
-
+	// j.receiveTime = maxReceive
 	return true
 }

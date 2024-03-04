@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import pandas as pd
 import glob
+import matplotlib.patches as mpatches
 plt.close('all')
 
 # Get CSV files list from a folder
@@ -19,85 +20,179 @@ big_df   = pd.concat(df_list, ignore_index=True)
 # # Load the CSV file
 # df = pd.read_csv(sys.argv[1])
 
-df_filtered = big_df[big_df['CUSTOM'] != 0.0]
+df_filtered = big_df[big_df['HWS-BJ'] != 0.0]
+df_filtered = df_filtered[df_filtered['CCR']!=20]
 
 # Group the filtered data by 'podCount' and calculate the average
 # podCount,alpha,density,replicaCount,nodeCount,CCR,RRC,speedHete
-podCount = df_filtered.groupby('podCount')[['MPEFT', 'IPPTS', 'CUSTOM']].mean().reset_index()
-alpha = df_filtered.groupby('alpha')[['MPEFT', 'IPPTS', 'CUSTOM']].mean().reset_index()
-density = df_filtered.groupby('density')[['MPEFT', 'IPPTS', 'CUSTOM']].mean().reset_index()
-replicaCount = df_filtered.groupby('replicaCount')[['MPEFT', 'IPPTS', 'CUSTOM']].mean().reset_index()
-ccr = df_filtered.groupby('CCR')[['MPEFT', 'IPPTS', 'CUSTOM']].mean().reset_index()
-nodeCount = df_filtered.groupby('nodeCount')[['MPEFT', 'IPPTS', 'CUSTOM']].mean().reset_index()
+podCount = df_filtered.groupby('podCount')[['MPEFT', 'IPPTS', 'HWS-BJ']].mean().reset_index()
+alpha = df_filtered.groupby('alpha')[['MPEFT', 'IPPTS', 'HWS-BJ']].mean().reset_index()
+# density = df_filtered.groupby('density')[['MPEFT', 'IPPTS', 'HWS-BJ']].mean().reset_index()
+replicaCount = df_filtered.groupby('replicaCount')[['MPEFT', 'IPPTS', 'HWS-BJ']].mean().reset_index()
+ccr = df_filtered.groupby('CCR')[['MPEFT', 'IPPTS', 'HWS-BJ']].mean().reset_index()
+speedHete = df_filtered.groupby('speedHete')[['MPEFT', 'IPPTS', 'HWS-BJ']].mean().reset_index()
+nodeCount = df_filtered.groupby('nodeCount')[['MPEFT', 'IPPTS', 'HWS-BJ']].mean().reset_index()
+
+hatch_patterns = ['+', '/', '.']
+colors = ['#1f77b4', '#ff7f0e', '#2ca02c']
+
+
+print(alpha)
+print(podCount)
 
 #========================
 # Plotting the bar chart
-ax = podCount.plot(x='podCount', kind='bar', rot=0, figsize=(10, 6))
+ax = podCount.plot(x='podCount', kind='bar', rot=0, figsize=(7, 6), color=['#1f77b4', '#ff7f0e', '#2ca02c'])
 
 # Adding titles and labels
-plt.title('Average Makespan by podCount')
+# plt.title('Average Makespan by podCount')
 plt.xlabel('podCount')
 plt.ylabel('Makespan')
+
+# Applying hatch patterns to each bar
+lens=len(ax.patches)/3
+for i, bar in enumerate(ax.patches):
+    bar.set_hatch(hatch_patterns[int(i/lens)])  # Cycle through patterns
+    bar.set_edgecolor('white')
+    
+# Creating custom legend handles
+legend_handles = [mpatches.Patch(facecolor=colors[i], label=label, edgecolor='white', hatch=hatch_patterns[i % len(hatch_patterns)]) for i, label in enumerate(['MPEFT', 'IPPTS', 'HWS-BJ'])]
+
+# Adding the custom legend to the plot
+plt.legend(handles=legend_handles)
 
 # Saving the plot to a file
 plt.savefig('./img/podCount.png')
 
 #========================
 # Plotting the bar chart
-ax = ccr.plot(x='CCR', kind='bar', rot=0, figsize=(10, 6))
+ax = ccr.plot(x='CCR', kind='bar', rot=0, figsize=(7, 6), color=['#1f77b4', '#ff7f0e', '#2ca02c'])
 
 # Adding titles and labels
-plt.title('Average Makespan by CCR')
+# plt.title('Average Makespan by CCR')
 plt.xlabel('CCR')
 plt.ylabel('Makespan')
+
+# Applying hatch patterns to each bar
+lens=len(ax.patches)/3
+for i, bar in enumerate(ax.patches):
+    bar.set_hatch(hatch_patterns[int(i/lens)])  # Cycle through patterns
+    bar.set_edgecolor('white')
+    
+# Creating custom legend handles
+legend_handles = [mpatches.Patch(facecolor=colors[i], label=label, edgecolor='white', hatch=hatch_patterns[i % len(hatch_patterns)]) for i, label in enumerate(['MPEFT', 'IPPTS', 'HWS-BJ'])]
+
+# Adding the custom legend to the plot
+plt.legend(handles=legend_handles)
 
 # Saving the plot to a file
 plt.savefig('./img/CCR.png')
 
 #========================
 # Plotting the bar chart
-ax = nodeCount.plot(x='nodeCount', kind='bar', rot=0, figsize=(10, 6))
+ax = nodeCount.plot(x='nodeCount', kind='bar', rot=0, figsize=(7, 6), color=['#1f77b4', '#ff7f0e', '#2ca02c'])
 
 # Adding titles and labels
-plt.title('Average Resource Usage by # of Nodes')
+# plt.title('Average Resource Usage by # of Nodes')
 plt.xlabel('# of Nodes')
-plt.ylabel('Resource Usage')
+plt.ylabel('Makespan')
+
+# Applying hatch patterns to each bar
+lens=len(ax.patches)/3
+for i, bar in enumerate(ax.patches):
+    bar.set_hatch(hatch_patterns[int(i/lens)])  # Cycle through patterns
+    bar.set_edgecolor('white')
+    
+# Creating custom legend handles
+legend_handles = [mpatches.Patch(facecolor=colors[i], label=label, edgecolor='white', hatch=hatch_patterns[i % len(hatch_patterns)]) for i, label in enumerate(['MPEFT', 'IPPTS', 'HWS-BJ'])]
+
+# Adding the custom legend to the plot
+plt.legend(handles=legend_handles)
 
 # Saving the plot to a file
 plt.savefig('./img/nodes.png')
 
 #========================
 # Plotting the bar chart
-ax = alpha.plot(x='alpha', kind='bar', rot=0, figsize=(10, 6))
+ax = alpha.plot(x='alpha', kind='bar', rot=0, figsize=(7, 6), color=['#1f77b4', '#ff7f0e', '#2ca02c'])
 
 # Adding titles and labels
-plt.title('Average Makespan by alpha')
+# plt.title('Average Makespan by alpha')
 plt.xlabel('alpha')
 plt.ylabel('Makespan')
+
+# Applying hatch patterns to each bar
+lens=len(ax.patches)/3
+for i, bar in enumerate(ax.patches):
+    bar.set_hatch(hatch_patterns[int(i/lens)])  # Cycle through patterns
+    bar.set_edgecolor('white')
+    
+# Creating custom legend handles
+legend_handles = [mpatches.Patch(facecolor=colors[i], label=label, edgecolor='white', hatch=hatch_patterns[i % len(hatch_patterns)]) for i, label in enumerate(['MPEFT', 'IPPTS', 'HWS-BJ'])]
+
+# Adding the custom legend to the plot
+plt.legend(handles=legend_handles)
 
 # Saving the plot to a file
 plt.savefig('./img/alpha.png')
 
-#========================
-# Plotting the bar chart
-ax = density.plot(x='density', kind='bar', rot=0, figsize=(10, 6))
+# #========================
+# # Plotting the bar chart
+# ax = density.plot(x='density', kind='bar', rot=0, figsize=(7, 6), color=['#1f77b4', '#ff7f0e', '#2ca02c'])
 
-# Adding titles and labels
+# # Adding titles and labels
 plt.title('Average Makespan by density')
-plt.xlabel('density')
-plt.ylabel('Makespan')
+# plt.xlabel('density')
+# plt.ylabel('Makespan')
 
-# Saving the plot to a file
-plt.savefig('./img/density.png')
+
+# # Saving the plot to a file
+# plt.savefig('./img/density.png')
 
 #========================
 # Plotting the bar chart
-ax = replicaCount.plot(x='replicaCount', kind='bar', rot=0, figsize=(10, 6))
+ax = replicaCount.plot(x='replicaCount', kind='bar', rot=0, figsize=(7, 6), color=['#1f77b4', '#ff7f0e', '#2ca02c'])
 
 # Adding titles and labels
-plt.title('Average Makespan by replicaCount')
+# plt.title('Average Makespan by replicaCount')
 plt.xlabel('replicaCount')
 plt.ylabel('Makespan')
 
+# Applying hatch patterns to each bar
+lens=len(ax.patches)/3
+for i, bar in enumerate(ax.patches):
+    bar.set_hatch(hatch_patterns[int(i/lens)])  # Cycle through patterns
+    bar.set_edgecolor('white')
+    
+# Creating custom legend handles
+legend_handles = [mpatches.Patch(facecolor=colors[i], label=label, edgecolor='white', hatch=hatch_patterns[i % len(hatch_patterns)]) for i, label in enumerate(['MPEFT', 'IPPTS', 'HWS-BJ'])]
+
+# Adding the custom legend to the plot
+plt.legend(handles=legend_handles)
+
 # Saving the plot to a file
 plt.savefig('./img/replicaCount.png')
+
+#========================
+# Plotting the bar chart
+ax = speedHete.plot(x='speedHete', kind='bar', rot=0, figsize=(7, 6), color=['#1f77b4', '#ff7f0e', '#2ca02c'])
+
+# Adding titles and labels
+# plt.title('Average Makespan by Heterogeneity')
+plt.xlabel('heterogeneity')
+plt.ylabel('Makespan')
+
+# Applying hatch patterns to each bar
+lens=len(ax.patches)/3
+for i, bar in enumerate(ax.patches):
+    bar.set_hatch(hatch_patterns[int(i/lens)])  # Cycle through patterns
+    bar.set_edgecolor('white')
+    
+# Creating custom legend handles
+legend_handles = [mpatches.Patch(facecolor=colors[i], label=label, edgecolor='white', hatch=hatch_patterns[i % len(hatch_patterns)]) for i, label in enumerate(['MPEFT', 'IPPTS', 'HWS-BJ'])]
+
+# Adding the custom legend to the plot
+plt.legend(handles=legend_handles)
+
+# Saving the plot to a file
+plt.savefig('./img/speedHete.png')

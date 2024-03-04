@@ -11,10 +11,12 @@ func TestSimulateCustom(t *testing.T) {
 	var randomSeed int64 = 101
 	
 	rand.Seed(randomSeed)
-	nodes, bw := createRandNode()
-	jobsDag := createStaticJobDAG()
+	nodes, bw := createSampleNode()
+	jobsDag := createSampleJobDAG()
 
 	c := createCustomAlgo(jobsDag.Vectors, nodes, bw)
 	makespan, resourceUsage:=c.simulate()
 	fmt.Println(makespan, resourceUsage)
 }
+
+

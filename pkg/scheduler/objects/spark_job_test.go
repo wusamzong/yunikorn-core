@@ -290,8 +290,8 @@ func createRandNode() ([]*node, *bandwidth) {
 	for i := 0; i < nodeCount; i++ {
 		n := &node{
 			ID:            i,
-			cpu:           2 * 500,
-			mem:           2 * 512,
+			cpu:           8 * 500,
+			mem:           8 * 512,
 			allocatedCpu:  0,
 			allocatedMem:  0,
 			executionRate: rand.Float64() + 1,
