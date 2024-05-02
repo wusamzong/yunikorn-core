@@ -13,6 +13,7 @@ type intervalAllocManager struct {
 	availableTime map[*node]float64
 	current       float64
 	allocations   []*intervalAlloc
+	finishedAllocations map[*replica]*intervalAlloc
 }
 
 type intervalAlloc struct {
@@ -26,8 +27,9 @@ type intervalAlloc struct {
 
 type intervalTransmissionManager struct {
 	customTransmission map[*replica]map[*replica]float64
-	doneTransmission   map[*replica]map[*replica]bool
-	transmission       []*intervalTransmission
+	transmissionMapping map[*replica]map[*replica]*intervalTransmission
+	doneTransmission    map[*replica]map[*replica]bool
+	transmission        []*intervalTransmission
 }
 
 type intervalTransmission struct {
@@ -54,6 +56,15 @@ func (am *intervalAllocManager) initAvailableTime(nodes []*node) {
 	}
 }
 
+func (am *intervalAllocManager) initFinishedAllocation(jobs []*Job){
+	am.finishedAllocations=map[*replica]*intervalAlloc{}
+	for _, job := range jobs {
+		for _, r := range job.replicas {
+			am.finishedAllocations[r]=&intervalAlloc{}
+		}
+	}
+}
+
 func (am *intervalAllocManager) allocate(request interface{}, tm *intervalTransmissionManager) {
 
 	if job, ok := request.(*Job); ok {
@@ -70,8 +81,8 @@ func (am *intervalAllocManager) allocate(request interface{}, tm *intervalTransm
 				}
 			}
 
-			fmt.Println("allocation, replica ID:", replica.ID, ",nodeID:", replica.node.ID)
-			fmt.Println("allocation, current", current*1.573, "makespan", job.makespan*1.573)
+			// fmt.Println("allocation, replica ID:", replica.ID, ",nodeID:", replica.node.ID)
+			// fmt.Println("allocation, current", current*1.56524, "makespan", job.makespan*1.56524)
 			// fmt.Println(job.replicaCpu,job.replicaMem)
 			allocation := &intervalAlloc{
 				replica:      replica,
@@ -127,6 +138,8 @@ func (am *intervalAllocManager) releaseResource() []*intervalAlloc {
 		alloc.replica.job.finish++
 		// fmt.Printf("release (j-%d, r-%d) \n",alloc.replica.job.ID, alloc.replica.ID)
 		am.release(alloc)
+		// am.finishedAllocations = append(am.finishedAllocations, alloc)
+		am.finishedAllocations[alloc.replica]=alloc
 	}
 	// fmt.Print("release ")
 	// for _, ra := range releaseAlloc{
@@ -197,8 +210,8 @@ func (tm *intervalTransmissionManager) addInterval(releaseInterval []*intervalAl
 					continue
 				} else {
 					transmissionTime := datasize / bw.values[from][to]
-					fmt.Println("transmission, replica ID:", replica.ID, ",nodeID:", replica.node.ID, "to replica:", childJob.ID, childReplica.ID)
-					fmt.Println("transmission, current", current, "makespan", transmissionTime)
+					// fmt.Println("transmission, replica ID:", replica.ID, ",nodeID:", replica.node.ID, "to replica:", childJob.ID, childReplica.ID)
+					// fmt.Println("transmission, current", current, "makespan", transmissionTime)
 					tm.transmission = append(tm.transmission, &intervalTransmission{
 						from:  replica,
 						to:    childReplica,
@@ -213,7 +226,7 @@ func (tm *intervalTransmissionManager) addInterval(releaseInterval []*intervalAl
 }
 
 func (tm *intervalTransmissionManager) addJobInterval(job *Job, current float64, bw *bandwidth){
-
+	
 	for _, parentJob := range job.parent {
 		for _, parentReplica := range parentJob.replicas {
 			datasize := parentReplica.finalDataSize[job]
@@ -223,12 +236,23 @@ func (tm *intervalTransmissionManager) addJobInterval(job *Job, current float64,
 				// fmt.Println(parentReplica.node.ID, replica.node.ID)
 				if from == to {
 					tm.customTransmission[parentReplica][replica] = current
+					tm.transmission = append(tm.transmission, &intervalTransmission{
+						from:  parentReplica,
+						to:    replica,
+						start: current,
+						end:   current,
+					})
 				} else {
 					transmissionTime := datasize / bw.values[from][to]
-					fmt.Println("transmission, parent replica ID:",parentJob.ID, parentReplica.ID, "parentNode:",parentReplica.node.ID,",to nodeID:", replica.node.ID, "to replica:",job.ID, replica.ID)
-					fmt.Println("transmission, current", current, "transmissionTime", transmissionTime)
-
+					// fmt.Println("transmission, parent replica ID:",parentJob.ID, parentReplica.ID, "parentNode:",parentReplica.node.ID,",to nodeID:", replica.node.ID, "to replica:",job.ID, replica.ID)
+					// fmt.Println("transmission, current", current, "transmissionTime", transmissionTime)
 					tm.customTransmission[parentReplica][replica] = current + transmissionTime
+					tm.transmission = append(tm.transmission, &intervalTransmission{
+						from:  parentReplica,
+						to:    replica,
+						start: current,
+						end:   current+transmissionTime,
+					})
 				}
 			}
 		}
@@ -236,10 +260,15 @@ func (tm *intervalTransmissionManager) addJobInterval(job *Job, current float64,
 }
 
 func (tm *intervalTransmissionManager) initTransmission(jobs []*Job) {
+	tm.transmissionMapping=map[*replica]map[*replica]*intervalTransmission{}
 	for _, job := range jobs {
 		for _, r := range job.replicas {
 			tm.doneTransmission[r] = map[*replica]bool{}
 			tm.customTransmission[r] = map[*replica]float64{}
+			tm.transmissionMapping[r] = map[*replica]*intervalTransmission{}
+			for _, child:=range r.children{
+				tm.transmissionMapping[r][child]=&intervalTransmission{}
+			}
 		}
 	}
 }
@@ -254,6 +283,7 @@ func (tm *intervalTransmissionManager) releaseInterval(current float64) []*inter
 	for _, alloc := range releaseAlloc {
 		tm.release(alloc)
 		tm.doneTransmission[alloc.from][alloc.to] = true
+		tm.transmissionMapping[alloc.from][alloc.to] = alloc
 	}
 	return releaseAlloc
 }
@@ -282,7 +312,7 @@ func (tm *intervalTransmissionManager) transmittedStatus(j *Job) bool {
 	return true
 }
 
-func nextInterval(tm *intervalTransmissionManager, am *intervalAllocManager) {
+func nextInterval(tm *intervalTransmissionManager, am *intervalAllocManager) float64{
 	var minEndTime float64 = math.MaxFloat64
 	for _, alloc := range am.allocations {
 		if minEndTime > alloc.end {
@@ -296,4 +326,49 @@ func nextInterval(tm *intervalTransmissionManager, am *intervalAllocManager) {
 	}
 
 	am.current = minEndTime
+	return am.current
+}
+
+func getCriticalPath(job []*Job ,tm *intervalTransmissionManager, am *intervalAllocManager )[]*replica{
+	replicas:=[]*replica{}
+	for _, j := range job{
+		replicas = append(replicas, j.replicas...)
+	}
+
+	head:=[]*replica{}
+	for _, r:= range replicas{
+		if len(r.parent)==0{
+			head = append(head, r)
+		}
+	}
+
+	max:=0.0
+	criticalPath:=[]*replica{}
+	currentPath:=[]*replica{}
+	var backtracking func(float64, *replica, *intervalTransmissionManager, *intervalAllocManager)
+
+	backtracking = func(current float64, source *replica, tm *intervalTransmissionManager, am *intervalAllocManager){
+		
+		for _, child := range source.children {
+			transmissionTime := tm.transmissionMapping[source][child].end - tm.transmissionMapping[source][child].start
+			currentPath = append(currentPath, child)
+			current+= transmissionTime
+			backtracking(current, child, tm, am)
+			if current>max && len(child.children)==0{
+				max=current
+				criticalPath = make([]*replica, len(currentPath))
+				copy(criticalPath, currentPath)
+			}
+			currentPath = currentPath[:len(currentPath)-1]
+			current-= transmissionTime
+		}
+	}
+
+	for _, h := range head{
+		max=0.0
+		currentPath=[]*replica{}
+		currentPath = append(currentPath, h)
+		backtracking(0, h, tm, am)
+	}
+	return criticalPath
 }

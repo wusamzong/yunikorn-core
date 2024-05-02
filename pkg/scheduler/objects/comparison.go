@@ -19,14 +19,14 @@ func randomBasedOnHete(mid float64, hete float64)int{
 	return result
 }
 
-func doWithTimeout(seed int64, podCount int, alpha float64, density float64, replicaCount int, nodeCount int, CCR float64, RRC float64, speedHete float64, resouHete float64) []string {
+func doWithTimeout(seed int64, podCount int, alpha float64, replicaCount int, nodeCount int, CCR float64) []string {
     // Create a channel to signal completion of the function and return result
     done := make(chan []string, 1)
 
     // Start the function in a goroutine
     go func() {
         // Call your function here with parameters and capture the result
-        result := testWithCase(seed, podCount, alpha, density, replicaCount, nodeCount, CCR, RRC, speedHete, resouHete)
+        result := testWithCase(seed, podCount, alpha, replicaCount, nodeCount, CCR)
         done <- result
     }()
 
@@ -50,27 +50,21 @@ func performOperation() {
     fmt.Println("Operation performed")
 }
 
-func testWithCase(seed int64, podCount int, alpha float64, density float64, replicaCount int, nodeCount int, CCR float64, RRC float64, speedHete float64, resouHete float64) []string {
+func testWithCase(seed int64, podCount int, alpha float64, replicaCount int, nodeCount int, CCR float64) []string {
 	config := comparisonConfig{
 		podCount: podCount,
 	}
 
 	width := int(math.Sqrt(float64(podCount) / ((1.0 - alpha) / alpha)))
 	config.width = width
-	config.percent = int(density * 10)
 	config.replicaNum = replicaCount
-	config.replicaCPURange = 4 // (rand.Int()%config.range + 1) * 500,
+	config.replicaCPURange = 4 
 	config.replicaMemRange = 4
 	
 	config.nodeCount = nodeCount
 	config.ccr=CCR
-	config.rrc=RRC
-	config.speedHeterogeneity=speedHete
-	config.resourceHeterogeneity=resouHete
 
-	averageNodeResource := float64(podCount/nodeCount)*RRC
-	config.averageNodeResource = averageNodeResource
-	config.nodeCPURange = replicaCount*2 // (rand.Int()%config.nodeCPURange + 1) * 1000
+	config.nodeCPURange = replicaCount*2 
 	config.nodeMemRange = replicaCount*2
 	
 	config.actionNum = 10
@@ -89,20 +83,20 @@ func testWithCase(seed int64, podCount int, alpha float64, density float64, repl
 			// continue
 			m := createMPEFT(jobsDag.Vectors, nodes, bw)
 			// current = append(current, fmt.Sprintf("%d", jobsDag.replicasCount))
-			makespan, resourceUsage := m.simulate()
+			makespan, SLR := m.simulate()
 			current = append(current, fmt.Sprintf("%.0f", makespan))
-			current = append(current, fmt.Sprintf("%.3f", resourceUsage))
+			current = append(current, fmt.Sprintf("%.3f", SLR))
 		} else if algoCount == 1 {
 			// continue
 			p := createIPPTS(jobsDag.Vectors, nodes, bw)
-			makespan, resourceUsage := p.simulate()
+			makespan, SLR := p.simulate()
 			current = append(current, fmt.Sprintf("%.0f", makespan))
-			current = append(current, fmt.Sprintf("%.3f", resourceUsage))
+			current = append(current, fmt.Sprintf("%.3f", SLR))
 		} else {
 			c := createCustomAlgo(jobsDag.Vectors, nodes, bw)
-			makespan, resourceUsage := c.simulate()
+			makespan, SLR := c.simulate()
 			current = append(current, fmt.Sprintf("%.0f", makespan))
-			current = append(current, fmt.Sprintf("%.3f", resourceUsage))
+			current = append(current, fmt.Sprintf("%.3f", SLR))
 		}
 	}
 
@@ -118,9 +112,7 @@ func createRandNodeByConfig(config comparisonConfig) ([]*node, *bandwidth) {
 		values: map[*node]map[*node]float64{},
 	}
 
-	// CPU:= randomBasedOnHete(config.averageNodeResource,config.resourceHeterogeneity)
-	// Mem:= randomBasedOnHete(config.averageNodeResource,config.resourceHeterogeneity)
-	// fmt.Println(float64(config.nodeCPURange), config.resourceHeterogeneity, CPU)
+
 	for i := 0; i < nodeCount; i++ {
 		resource := (rand.Intn(config.nodeCPURange)+4)
 		n := &node{
@@ -129,7 +121,7 @@ func createRandNodeByConfig(config comparisonConfig) ([]*node, *bandwidth) {
 			mem:           resource * 512,
 			allocatedCpu:  0,
 			allocatedMem:  0,
-			executionRate: 1+(config.speedHeterogeneity+1.0)*rand.Float64(),
+			executionRate: 1+rand.Float64(),
 		}
 		nodes = append(nodes, n)
 	}
@@ -148,7 +140,7 @@ func createRandNodeByConfig(config comparisonConfig) ([]*node, *bandwidth) {
 			if i == j {
 				randBandwidth = 0
 			} else {
-				randBandwidth = 1+((config.speedHeterogeneity+1.0)*rand.Float64())
+				randBandwidth = 1+rand.Float64()
 				
 			}
 

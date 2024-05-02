@@ -3,6 +3,7 @@ package objects
 import (
 	"fmt"
 	"math"
+	"sort"
 )
 
 type JobsDAG struct {
@@ -66,6 +67,51 @@ type bandwidth struct {
 	values map[*node]map[*node]float64
 }
 
+func (dag *JobsDAG) sort(){
+	sort.Slice(dag.Vectors, func(i, j int) bool{
+		return dag.Vectors[i].ID<dag.Vectors[j].ID
+	})
+}
+
+func (dag *JobsDAG) getAllReplicas() []*replica{
+	dag.sort()
+	result:= []*replica{}
+	for _, job := range dag.Vectors{
+		for _, replica := range job.replicas{
+			result = append(result, replica)
+		}
+	}
+	return result
+}
+
+func calSLR(nodes []*node, aveBw float64, criticalPath []*replica, makespan float64) float64{
+	sum := 0.0
+	for _, replica := range criticalPath{
+		min:= math.MaxFloat64
+		for _, node := range nodes{
+			replicaExecutionTime := 0.0
+			maxActionDatasize := 0.0
+			for _, action := range replica.actions{
+				replicaExecutionTime += action.executionTime/node.executionRate
+				for _, datasize := range action.datasize { 
+					if datasize>maxActionDatasize{
+						maxActionDatasize = datasize
+					}
+				}
+				replicaExecutionTime += maxActionDatasize/aveBw
+			}
+			if min > replicaExecutionTime{
+				min = replicaExecutionTime
+			}
+		}
+		sum+=min
+	}
+	return makespan/sum
+}
+
+func calEfficiency(){
+	
+}
 
 func (j *Job) createReplica() *replica {
 	r := &replica{
@@ -74,6 +120,8 @@ func (j *Job) createReplica() *replica {
 		node:          nil,
 		actions:       []*action{},
 		finalDataSize: map[*Job]float64{},
+		children:      []*replica{},
+		parent:        []*replica{},
 	}
 	j.replicas = append(j.replicas, r)
 	return r
@@ -125,7 +173,6 @@ func (job *Job) decideNode(nodes []*node, bw *bandwidth) bool {
 	for idx, replica := range job.replicas {
 		replica.minValue = math.MaxFloat64
 		
-		
 		for _, node := range nodes {
 			var currentJobCpuUsage int 
 			var currentJobMemUsage int	
@@ -147,6 +194,7 @@ func (job *Job) decideNode(nodes []*node, bw *bandwidth) bool {
 			for _, action := range replica.actions {
 				var transmissionTime, executionTime float64
 				executionTime = action.executionTime / node.executionRate
+				time += executionTime
 				transmissionTime = 0
 				if idx != 0 {
 					for i := 0; i < idx; i++ {
@@ -165,9 +213,11 @@ func (job *Job) decideNode(nodes []*node, bw *bandwidth) bool {
 							transmissionTime = curTransmissionTime
 						}
 					}
+					time+=transmissionTime
 				}
-				time += (executionTime + transmissionTime)
 			}
+			
+
 
 			// transmission time "between" the Jobs
 			var transmissionTime float64
@@ -190,8 +240,8 @@ func (job *Job) decideNode(nodes []*node, bw *bandwidth) bool {
 					}
 				}
 			}
+			
 			time += transmissionTime
-
 			// DR of replica on node
 			nodeCapacityVector := []float64{
 				float64(node.cpu) / float64(node.cpu+node.mem),
@@ -211,6 +261,7 @@ func (job *Job) decideNode(nodes []*node, bw *bandwidth) bool {
 			} else {
 				dr = resourceShare[1]
 			}
+			fmt.Printf("Job: %d, replica: %d, nodeID:, %d, value: %.1f\n", job.ID, idx, node.ID, time)
 			if time < replica.minValue {
 				replica.minTime = time
 				replica.minDr = dr
@@ -220,12 +271,13 @@ func (job *Job) decideNode(nodes []*node, bw *bandwidth) bool {
 				// replica.minValue = time
 				replica.node = node
 			}
-			fmt.Printf("Job: %d, replica: %d, nodeID:, %d, minValue: %.1f\n", job.ID, idx, node.ID, replica.minValue)
+			
 		}
 		
 		if replica.node == nil {
 			return false
 		}else{
+			fmt.Printf("Job: %d, replica: %d, select nodeID: %d\n", job.ID, idx, replica.node.ID)
 			doneReplica = append(doneReplica, replica)
 		}
 
@@ -323,7 +375,8 @@ func (j *Job) predictTime(aveBw float64) float64 {
 }
 
 func (job *Job) priority(avgExecution, avgBW float64) float64 {
-	if job.pathPriority != 0 {
+	// fmt.Println(job.ID, job.pathPriority)
+	if job.pathPriority != 0.0 {
 		return job.pathPriority
 	}
 	// find current job predict execution time
@@ -331,21 +384,26 @@ func (job *Job) priority(avgExecution, avgBW float64) float64 {
 	var time float64
 
 	// transmission time + Execution time "Inside" the Job
+	var transmissionTime, executionTime float64
+	executionTime = 0.0
+	transmissionTime = 0.0
 	for _, action := range replica.actions {
-		var transmissionTime, executionTime float64
-		executionTime = action.executionTime * avgExecution
+		
+		executionTime += action.executionTime * avgExecution
 		maxDataSize := 0.0
 		for i := 0; i < len(job.replicas); i++ {
 			if maxDataSize < action.datasize[job.replicas[i]] {
 				maxDataSize = action.datasize[job.replicas[i]]
 			}
 		}
-		transmissionTime = maxDataSize / avgBW
-		time += (executionTime + transmissionTime)
+		transmissionTime += maxDataSize / avgBW
 	}
+	fmt.Println("jobID:",job.ID ,"m_{j_h}",executionTime)
+	time += (executionTime + transmissionTime)
 
-	var transmissionTime float64
+	transmissionTime = 0.0
 	maxDataSize := 0.0
+
 	for _, parent := range job.parent {
 		for _, parentReplica := range parent.replicas {
 			if maxDataSize < parentReplica.finalDataSize[job] {
@@ -365,7 +423,7 @@ func (job *Job) priority(avgExecution, avgBW float64) float64 {
 		}
 	}
 	job.pathPriority += maxPath
-	// fmt.Printf("The path priority of Job %d is %.1f\n", job.ID, job.pathPriority)
+	fmt.Printf("The path priority of Job %d is %.1f\n", job.ID, job.pathPriority)
 	return job.pathPriority
 }
 

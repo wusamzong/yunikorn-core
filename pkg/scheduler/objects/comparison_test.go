@@ -25,7 +25,7 @@ type testCase struct {
 }
 
 const (
-	path     = "/home/hsuanzong/document/01-yunikorn/yunikorn-core/pkg/scheduler/objects/result"
+	path     = "/home/lab/backup/yunikorn-core-local/pkg/scheduler/objects/result"
 	filename = "comparsion"
 )
 
@@ -98,13 +98,9 @@ func getState(state []int, isload bool, wg *sync.WaitGroup) {
 	cases := testCase{
 		podCount:     []int{100, 300, 500, 700, 900, 1100},
 		alpha:        []float64{0.2, 0.5, 0.8},
-		density:      []float64{0.4, 0.6},
 		replicaCount: []int{4, 6, 8},
 		nodes:        []int{4, 8, 16, 32},
 		CCR:          []float64{0.1, 0.5, 1, 5, 10, 20},
-		RRC:          []float64{0.01, 0.05, 0.1, 0.5},
-		speedHete:    []float64{0.1, 0.5, 1, 2},
-		resouHete:    []float64{0.1, 0.5, 1, 2},
 	}
 
 	for i := 0; i < len(cases.podCount); i++ {
@@ -166,19 +162,15 @@ func comparison(state []int, isload bool, wg *sync.WaitGroup) {
 	defer w.Flush()
 	defer wg.Done()
 
-	w.Write([]string{"podCount", "alpha", "replicaCount", "nodeCount", "CCR", "speedHete", "MPEFT", "MPEFTusage", "IPPTS", "IPPTSusage", "HRWS-BJ", "HRWS-BJusage"})
+	w.Write([]string{"podCount", "alpha", "replicaCount", "nodeCount", "CCR", "speedHete", "MPEFT", "MPEFTSLR", "IPPTS", "IPPTSSLR", "HWS", "HWSSLR"})
 
 	cases := testCase{
-		count:        10,
+		count:        5,
 		podCount:     []int{100, 300, 500, 700, 900, 1100},
 		alpha:        []float64{0.2, 0.5, 0.8},
-		density:      []float64{0.4, 0.6},
 		replicaCount: []int{4, 6, 8},
 		nodes:        []int{4, 8, 16, 32},
 		CCR:          []float64{0.1, 0.5, 1, 5, 10, 20},
-		RRC:          []float64{0.01, 0.05, 0.1, 0.5},
-		speedHete:    []float64{0.1, 0.5, 1, 2},
-		resouHete:    []float64{0.1, 0.5, 1, 2},
 	}
 
 	for i := 0; i < len(cases.podCount); i++ {
@@ -189,10 +181,6 @@ func comparison(state []int, isload bool, wg *sync.WaitGroup) {
 			if isload {
 				j = state[1]
 			}
-			// for k := 0; k < len(cases.density); k++ {
-			// 	if isload {
-			// 		k = state[2]
-			// 	}
 			for l := 0; l < len(cases.replicaCount); l++ {
 				if isload {
 					l = state[3]
@@ -205,41 +193,27 @@ func comparison(state []int, isload bool, wg *sync.WaitGroup) {
 						if isload {
 							n = state[5]
 						}
-						// for o := 0; o < len(cases.RRC); o++ {
-						// 	if isload {
-						// 		o = state[6]
-						// 	}
-						for p := 0; p < len(cases.speedHete); p++ {
-							if isload {
-								p = state[7]
-								isload = false
-							}
-							var q int64
-							for q = 0; q < int64(cases.count); q++ {
-								current := []string{}
-								current = append(current, fmt.Sprintf("%d", cases.podCount[i]))
-								current = append(current, fmt.Sprintf("%.1f", cases.alpha[j]))
-								// current = append(current, fmt.Sprintf("%.1f", cases.density[k]))
-								current = append(current, fmt.Sprintf("%d", cases.replicaCount[l]))
-								current = append(current, fmt.Sprintf("%d", cases.nodes[m]))
-								current = append(current, fmt.Sprintf("%.1f", cases.CCR[n]))
-								// current = append(current, fmt.Sprintf("%.2f", cases.RRC[o]))
-								current = append(current, fmt.Sprintf("%.1f", cases.speedHete[p]))
-								// current = append(current, fmt.Sprintf("%.2f", resourceHete))
-								current = append(current, doWithTimeout(q, cases.podCount[i], cases.alpha[j], 0.0,
-									cases.replicaCount[l], cases.nodes[m], cases.CCR[n], 0.0, cases.speedHete[p], 0.0)...)
-								w.Write(current)
-								w.Flush()
+						var q int64
+						for q = 0; q < int64(cases.count); q++ {
+							current := []string{}
+							current = append(current, fmt.Sprintf("%d", cases.podCount[i]))
+							current = append(current, fmt.Sprintf("%.1f", cases.alpha[j]))
+							// current = append(current, fmt.Sprintf("%.1f", cases.density[k]))
+							current = append(current, fmt.Sprintf("%d", cases.replicaCount[l]))
+							current = append(current, fmt.Sprintf("%d", cases.nodes[m]))
+							current = append(current, fmt.Sprintf("%.1f", cases.CCR[n]))
 
-							}
+							current = append(current, doWithTimeout(q, cases.podCount[i], cases.alpha[j],
+								cases.replicaCount[l], cases.nodes[m], cases.CCR[n])...)
+							w.Write(current)
+							w.Flush()
 
 						}
-						// }
+
 					}
 				}
 			}
 			return
-			// }
 
 		}
 	}
@@ -334,15 +308,11 @@ func TestTestWithCase(t *testing.T) {
 	var seed int64 = 1
 	podCount := 100
 	alpha := 0.2
-	density := 0.4
 	replicaCount := 4
 	nodeCount := 4
 	CCR := 0.5
-	RRC := 0.01
-	speedHete := 0.01
-	resouHete := 0.1
 	for i := 0; i < 10; i++ {
-		testWithCase(seed, podCount, alpha, density, replicaCount, nodeCount, CCR, RRC, speedHete, resouHete)
+		testWithCase(seed, podCount, alpha, replicaCount, nodeCount, CCR)
 	}
 
 }
@@ -359,7 +329,7 @@ func TestComparisonSample(t *testing.T) {
 	// nodes, bw = createSampleNode()
 	// jobsDag = createSampleJobDAG()
 	// m := createMPEFT(jobsDag.Vectors, nodes, bw)
-	// makespan, resourceUsage = m.simulate()
+	// makespan, resourceUsage := m.simulate()
 	// fmt.Println("=>  ", makespan, resourceUsage)
 
 	// nodes, bw = createSampleNode()
@@ -460,7 +430,7 @@ func createSampleJobDAG() *JobsDAG {
 		// Initialize final Data size
 		for _, r := range j.replicas {
 			for _, child := range j.children {
-				r.finalDataSize[child] =1+rand.Float64() * 30
+				r.finalDataSize[child] = 1 + rand.Float64()*30
 				// fmt.Println("from",r.ID,"to",child.ID,"final data",r.finalDataSize[child])
 			}
 		}
@@ -488,21 +458,20 @@ func createSampleReplica(j *Job) {
 	}
 
 	for i := 0; i < j.actionNum; i++ {
-		
-		randExecutionTime :=1+rand.Float64() * 5
+
+		randExecutionTime := 1 + rand.Float64()*5
 		// if randExecutionTime<1{
 		// 	randExecutionTime+=1
 		// }
 		// fmt.Println(randExecutionTime)
-		
-		
+
 		for _, pr := range j.replicas {
 			a := pr.createAction(randExecutionTime)
-			if i==j.actionNum-1{
+			if i == j.actionNum-1 {
 				continue
 			}
 			for _, r := range j.replicas {
-				a.datasize[r] =1+rand.Float64() * 5
+				a.datasize[r] = 1 + rand.Float64()*5
 				// fmt.Println("from",pr.ID,"to",r.ID,"data",a.datasize[r])
 			}
 		}

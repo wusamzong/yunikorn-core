@@ -31,8 +31,8 @@ func TestGenerateRandomDAGWithConfig(t *testing.T) {
 		config.replicaMemRange = rand.Intn(8) + 1
 		config.actionNum = 10
 
-		// jobsDag := simulateGenerateRandomDAGWithConfig(config)
-		jobsDag := generateRandomDAGWithConfig(config)
+		jobsDag := simulateGenerateRandomDAGWithConfig(config)
+		// jobsDag := generateRandomDAGWithConfig(config)
 		fmt.Printf("%d,%d\n", jobsDag.replicasCount, i)
 	}
 }

@@ -38,6 +38,7 @@ func (c *customAlgo) simulate() (float64, float64) {
 
 	allocManager.initCapacity(c.nodes)
 	allocManager.initAvailableTime(c.nodes)
+	allocManager.initFinishedAllocation(c.jobs)
 
 	transManager.initTransmission(c.jobs)
 
@@ -56,11 +57,12 @@ func (c *customAlgo) simulate() (float64, float64) {
 
 	// If the job is end of DAG then pop it into available Jobs Heap
 	for _, job := range c.jobs {
+		scheduledJob[job]=false
 		if len(job.parent) == 0 {
+			job.priority(aveBw, aveExecRate)
 			heap.Push(availJobsHeap, job)
 		}
 	}
-	
 
 	// for _, node := range c.nodes {
 	// 	fmt.Printf("nodeId:%d, capacity:{%d, %d}, allocated:{%d, %d}\n", node.ID, node.cpu, node.mem, node.allocatedCpu, node.allocatedMem)
@@ -68,16 +70,25 @@ func (c *customAlgo) simulate() (float64, float64) {
 	for availJobsHeap.Len() > 0 {
 		var job *Job
 		reserveQueue := []*Job{}
+
+		fmt.Print("Queue: ")
+		for i:=0;i<availJobsHeap.Len();i++{
+			fmt.Print((*availJobsHeap).jobs[i].ID, " ")
+		}
+		fmt.Println()
+
 		for availJobsHeap.Len() > 0 {
-			job = availJobsHeap.Pop().(*Job)
-			if _, exist := scheduledJob[job]; exist {
+
+			job = heap.Pop(availJobsHeap).(*Job)
+
+			if exist := scheduledJob[job]; exist {
 				continue
 			}
 			done := job.decideNode(c.nodes, c.bw)
 			allParentDone := job.allParentDone()
 			// isAllParentTransmitted := transManager.transmittedStatus(job)
 			if done && allParentDone {
-				fmt.Println("JobID:", job.ID, " is allocated")
+				fmt.Println("JobID:", job.ID, " is allocated, Priority:", job.pathPriority)
 				// for _, replica := range job.replicas{
 				// 	fmt.Println(replica.minValue)
 				// }
@@ -90,28 +101,39 @@ func (c *customAlgo) simulate() (float64, float64) {
 				for _, child := range job.children {
 					if child.allParentScheduled(scheduledJob) && !scheduledJob[child] {
 						heap.Push(availJobsHeap, child)
+						// reserveQueue = append(reserveQueue, child)
 					}
 				}
 			} else {
+				if !done{
+					fmt.Println("no enough resource!")
+				}
+				if !allParentDone{
+					fmt.Println("parent isn't done")
+				}
+				
 				reserveQueue = append(reserveQueue, job)
 			}
-
 		}
+		
 		for _, job := range reserveQueue {
-			availJobsHeap.Push(job)
+			heap.Push(availJobsHeap, job)
 		}
 
-		nextInterval(&transManager, &allocManager)
+		current:=nextInterval(&transManager, &allocManager)
 		_ = allocManager.releaseResource()
+		_ = transManager.releaseInterval(current)
 
 		if allocManager.current == math.MaxFloat64 {
 			return 0.0, 0.0
 		}
 
 	}
+	criticalPath:=getCriticalPath(c.jobs, &transManager, &allocManager)
+	makespan, _:=allocManager.getResult()
+	SLR := calSLR(c.nodes, aveBw, criticalPath, makespan)
 
-	// fmt.Printf("makespan = %.2f\n", allocManager.getMakespan())
-	return allocManager.getResult()
+	return makespan, SLR
 }
 
 

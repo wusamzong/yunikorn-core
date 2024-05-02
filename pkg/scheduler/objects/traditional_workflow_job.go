@@ -14,8 +14,8 @@ func calcAve(nodes []*node, bw *bandwidth) (float64, float64) {
 
 	edgeCount := 0.0
 	edgeSum := 0.0
-	for i := 0; i < len(nodes)-1; i++ {
-		for j := i + 1; j < len(nodes); j++ {
+	for i := 0; i < len(nodes); i++ {
+		for j := i; j < len(nodes); j++ {
 			from := nodes[i]
 			to := nodes[j]
 			edgeCount += 1.0

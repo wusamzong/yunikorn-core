@@ -111,6 +111,7 @@ func (p *ippts) simulate() (float64, float64) {
 	}
 
 	allocManager.initCapacity(p.nodes)
+	allocManager.initFinishedAllocation(p.jobs)
 	transManager.initTransmission(p.jobs)
 	queue := make([]*Job, len(p.jobs))
 	copy(queue, p.jobs)
@@ -158,23 +159,22 @@ func (p *ippts) simulate() (float64, float64) {
 			}
 		}
 		queue = append(queue, reserveQueue...)
-		// fmt.Printf("Try Job: (j-%d (%d, %d, %d))\n", job.ID, job.replicaCpu, job.replicaMem, job.replicaNum)
-		nextInterval(&transManager, &allocManager)
-		// fmt.Printf("updateCurrent time: %.2f\n", allocManager.current)
+
+		current:=nextInterval(&transManager, &allocManager)
 		_ = allocManager.releaseResource()
-		// transManager.addInterval(releaseAlloc, allocManager.current, p.bw)
-		// transManager.releaseInterval(allocManager.current)
-		// for _, node := range p.nodes {
-		// 	fmt.Printf("nodeId:%d, capacity:{%d, %d}, allocated:{%d, %d}\n", node.ID, node.cpu, node.mem, node.allocatedCpu, node.allocatedMem)
-		// }
+		_ = transManager.releaseInterval(current)
+		
 		if allocManager.current == math.MaxFloat64 {
 			return 0.0, 0.0
 		}
 
 	}
+	_, aveBw := calcAve(p.nodes, p.bw)
+	criticalPath:=getCriticalPath(p.jobs, &transManager, &allocManager)
+	makespan, _:=allocManager.getResult()
+	SLR := calSLR(p.nodes, aveBw, criticalPath, makespan)
 
-	// fmt.Printf("makespan = %.2f\n", allocManager.getMakespan())
-	return allocManager.getResult()
+	return makespan, SLR
 }
 
 func (p *ippts) tryNode(r *replica) bool {
