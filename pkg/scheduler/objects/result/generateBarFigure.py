@@ -20,7 +20,12 @@ big_df   = pd.concat(df_list, ignore_index=True)
 # # Load the CSV file
 # df = pd.read_csv(sys.argv[1])
 
+df_filtered = big_df[big_df['MPEFT'] != 0.0]
+df_filtered = big_df[big_df['IPPTS'] != 0.0]
 df_filtered = big_df[big_df['HWS'] != 0.0]
+# df_filtered = big_df[big_df['MPEFTSLR'] != "+Inf"]
+# df_filtered = big_df[big_df['IPPTSSLR'] != "+Inf"]
+# df_filtered = big_df[big_df['HWSSLR'] != "+Inf"]
 # df_filtered = df_filtered[df_filtered['CCR']!=20]
 
 # Group the filtered data by 'podCount' and calculate the average

@@ -19,14 +19,14 @@ func randomBasedOnHete(mid float64, hete float64)int{
 	return result
 }
 
-func doWithTimeout(seed int64, podCount int, alpha float64, replicaCount int, nodeCount int, CCR float64) []string {
+func doWithTimeout(seed int64, config comparisonConfig) []string {
     // Create a channel to signal completion of the function and return result
     done := make(chan []string, 1)
 
     // Start the function in a goroutine
     go func() {
         // Call your function here with parameters and capture the result
-        result := testWithCase(seed, podCount, alpha, replicaCount, nodeCount, CCR)
+        result := testWithCase(seed, config)
         done <- result
     }()
 
@@ -50,22 +50,15 @@ func performOperation() {
     fmt.Println("Operation performed")
 }
 
-func testWithCase(seed int64, podCount int, alpha float64, replicaCount int, nodeCount int, CCR float64) []string {
-	config := comparisonConfig{
-		podCount: podCount,
-	}
+func testWithCase(seed int64 ,config comparisonConfig) []string {
 
-	width := int(math.Sqrt(float64(podCount) / ((1.0 - alpha) / alpha)))
+	width := int(math.Sqrt(float64(config.podCount) / ((1.0 - config.alpha) / config.alpha)))
 	config.width = width
-	config.replicaNum = replicaCount
 	config.replicaCPURange = 4 
 	config.replicaMemRange = 4
-	
-	config.nodeCount = nodeCount
-	config.ccr=CCR
 
-	config.nodeCPURange = replicaCount*2 
-	config.nodeMemRange = replicaCount*2
+	config.nodeCPURange = config.replicaNum*2 
+	config.nodeMemRange = config.replicaNum*2
 	
 	config.actionNum = 10
 
@@ -121,7 +114,7 @@ func createRandNodeByConfig(config comparisonConfig) ([]*node, *bandwidth) {
 			mem:           resource * 512,
 			allocatedCpu:  0,
 			allocatedMem:  0,
-			executionRate: 1+rand.Float64(),
+			executionRate: 1+rand.Float64()*5*config.speedHeterogeneity,
 		}
 		nodes = append(nodes, n)
 	}
@@ -140,7 +133,7 @@ func createRandNodeByConfig(config comparisonConfig) ([]*node, *bandwidth) {
 			if i == j {
 				randBandwidth = 0
 			} else {
-				randBandwidth = 1+rand.Float64()
+				randBandwidth = 1+rand.Float64()*5
 				
 			}
 

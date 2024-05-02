@@ -85,26 +85,30 @@ func (dag *JobsDAG) getAllReplicas() []*replica{
 }
 
 func calSLR(nodes []*node, aveBw float64, criticalPath []*replica, makespan float64) float64{
+	
 	sum := 0.0
 	for _, replica := range criticalPath{
 		min:= math.MaxFloat64
 		for _, node := range nodes{
 			replicaExecutionTime := 0.0
-			maxActionDatasize := 0.0
+			// maxActionDatasize := 0.0
 			for _, action := range replica.actions{
 				replicaExecutionTime += action.executionTime/node.executionRate
-				for _, datasize := range action.datasize { 
-					if datasize>maxActionDatasize{
-						maxActionDatasize = datasize
-					}
-				}
-				replicaExecutionTime += maxActionDatasize/aveBw
+				// for _, datasize := range action.datasize { 
+				// 	if datasize>maxActionDatasize{
+				// 		maxActionDatasize = datasize
+				// 	}
+				// }
+				// replicaExecutionTime += maxActionDatasize/aveBw
 			}
 			if min > replicaExecutionTime{
 				min = replicaExecutionTime
 			}
 		}
 		sum+=min
+	}
+	if sum==0.0{
+		return 0.0
 	}
 	return makespan/sum
 }
