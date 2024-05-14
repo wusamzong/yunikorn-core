@@ -48,7 +48,7 @@ ax = podCount.plot(x='podCount', kind='bar', rot=0, figsize=(7, 6), color=['#1f7
 # Adding titles and labels
 # plt.title('Average Makespan by podCount')
 plt.xlabel('podCount')
-plt.ylabel('SLR')
+plt.ylabel('Average SLR')
 
 # Applying hatch patterns to each bar
 lens=len(ax.patches)/3
@@ -72,7 +72,7 @@ ax = ccr.plot(x='CCR', kind='bar', rot=0, figsize=(7, 6), color=['#1f77b4', '#ff
 # Adding titles and labels
 # plt.title('Average Makespan by CCR')
 plt.xlabel('CCR')
-plt.ylabel('SLR')
+plt.ylabel('Average SLR')
 
 # Applying hatch patterns to each bar
 lens=len(ax.patches)/3
@@ -96,7 +96,7 @@ ax = nodeCount.plot(x='nodeCount', kind='bar', rot=0, figsize=(7, 6), color=['#1
 # Adding titles and labels
 # plt.title('Average Resource Usage by # of Nodes')
 plt.xlabel('# of Nodes')
-plt.ylabel('SLR')
+plt.ylabel('Average SLR')
 
 # Applying hatch patterns to each bar
 lens=len(ax.patches)/3
@@ -120,7 +120,7 @@ ax = alpha.plot(x='alpha', kind='bar', rot=0, figsize=(7, 6), color=['#1f77b4', 
 # Adding titles and labels
 # plt.title('Average Makespan by alpha')
 plt.xlabel('alpha')
-plt.ylabel('SLR')
+plt.ylabel('Average SLR')
 
 # Applying hatch patterns to each bar
 lens=len(ax.patches)/3
@@ -144,7 +144,7 @@ plt.savefig('./img/alpha.png')
 # # Adding titles and labels
 plt.title('Average Makespan by density')
 # plt.xlabel('density')
-# plt.ylabel('SLR')
+# plt.ylabel('Average SLR')
 
 
 # # Saving the plot to a file
@@ -157,7 +157,7 @@ ax = replicaCount.plot(x='replicaCount', kind='bar', rot=0, figsize=(7, 6), colo
 # Adding titles and labels
 # plt.title('Average Makespan by replicaCount')
 plt.xlabel('replicaCount')
-plt.ylabel('SLR')
+plt.ylabel('Average SLR')
 
 # Applying hatch patterns to each bar
 lens=len(ax.patches)/3
@@ -181,7 +181,7 @@ ax = speedHete.plot(x='speedHete', kind='bar', rot=0, figsize=(7, 6), color=['#1
 # Adding titles and labels
 # plt.title('Average Makespan by Heterogeneity')
 plt.xlabel('heterogeneity')
-plt.ylabel('SLR')
+plt.ylabel('Average SLR')
 
 # Applying hatch patterns to each bar
 lens=len(ax.patches)/3

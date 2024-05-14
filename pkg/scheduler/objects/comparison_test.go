@@ -19,9 +19,11 @@ type testCase struct {
 	replicaCount []int
 	nodes        []int
 	CCR          []float64
+	TCR          []float64
 	RRC          []float64
 	speedHete    []float64
 	resouHete    []float64
+	actionCount  []int
 }
 
 const (
@@ -54,29 +56,83 @@ func RandSeq(n int) string {
 	return string(b)
 }
 
+func TestP1(t *testing.T) {
+	podCountIdx := []int{0}
+	runByIdx(podCountIdx)
+}
+func TestP2(t *testing.T) {
+	podCountIdx := []int{1}
+	runByIdx(podCountIdx)
+}
+func TestP3(t *testing.T) {
+	podCountIdx := []int{2}
+	runByIdx(podCountIdx)
+}
+func TestP4(t *testing.T) {
+	podCountIdx := []int{3}
+	runByIdx(podCountIdx)
+}
+func TestP5(t *testing.T) {
+	podCountIdx := []int{4}
+	runByIdx(podCountIdx)
+}
+
+func runByIdx(podCountIdx []int) {
+	state := createStates(podCountIdx)
+	maxGoroutines := 10
+	guard := make(chan struct{}, maxGoroutines)
+	var wg sync.WaitGroup
+	wg.Add(len(state))
+	for _, s := range state {
+		guard <- struct{}{} // 嘗試向 channel 發送一個空結構，如果 channel 滿了，這裡會阻塞
+		go func(s []int) {
+			comparison(s)
+			<-guard
+			wg.Done()
+		}(s)
+	}
+	wg.Wait()
+}
+
+func createStates(podCountIdx []int) [][]int {
+	state := [][]int{}
+	cases := testCase{
+		podCount:     []int{100, 300, 500, 700, 900},
+		alpha:        []float64{0.2, 0.5, 0.8},
+		replicaCount: []int{4, 6, 8},
+	}
+	for _, i := range podCountIdx {
+		for j := 0; j < len(cases.alpha); j++ {
+			newState := make([]int, 8)
+			newState[0] = i
+			newState[1] = j
+			state = append(state, newState)
+		}
+	}
+	return state
+}
+
 func TestParallel(t *testing.T) {
 	state := [][]int{}
 	var wg sync.WaitGroup
 	cases := testCase{
-		count:        1,
-		podCount:     []int{100, 300, 500, 700, 900, 1100},
+		podCount:     []int{100, 300, 500, 700, 900},
 		alpha:        []float64{0.2, 0.5, 0.8},
 		replicaCount: []int{4, 6, 8},
-		nodes:        []int{4, 8, 16, 32},
-		CCR:          []float64{0.1, 0.5, 1, 5, 10, 20},
 	}
-	for i := 3; i < len(cases.podCount); i++ {
+
+	for i := 0; i < len(cases.podCount); i++ {
 		for j := 0; j < len(cases.alpha); j++ {
-			// for k := 0; k < len(cases.replicaCount); k++ {
+			for k := 0; k < len(cases.replicaCount); k++ {
 				newState := make([]int, 8)
 				newState[0] = i
 				newState[1] = j
-				// newState[2] = k
+				newState[2] = k
 				state = append(state, newState)
-			// }
+			}
 		}
 	}
-	maxGoroutines := 20
+	maxGoroutines := 10
 	guard := make(chan struct{}, maxGoroutines)
 
 	wg.Add(len(state))
@@ -96,11 +152,13 @@ func getState(state []int, isload bool) {
 	value := []float64{1100, 0.8, 0.4, 8, 32, 10.0, 0.01, 0.5}
 
 	cases := testCase{
-		podCount:     []int{100, 300, 500, 700, 900, 1100},
+		podCount:     []int{100, 300, 500, 700, 900},
 		alpha:        []float64{0.2, 0.5, 0.8},
 		replicaCount: []int{4, 6, 8},
 		nodes:        []int{4, 8, 16, 32},
 		CCR:          []float64{0.1, 0.5, 1, 5, 10, 20},
+		TCR:          []float64{0.1, 0.5, 1, 5, 10, 20}, //Transmission Cost Ratio
+		actionCount:  []int{2, 4, 8, 16},
 	}
 
 	for i := 0; i < len(cases.podCount); i++ {
@@ -165,12 +223,14 @@ func comparison(state []int) {
 
 	cases := testCase{
 		count:        1,
-		podCount:     []int{100, 300, 500, 700, 900, 1100},
+		podCount:     []int{100, 300, 500, 700, 900},
 		alpha:        []float64{0.2, 0.5, 0.8},
 		replicaCount: []int{4, 6, 8},
 		nodes:        []int{4, 8, 16, 32},
 		CCR:          []float64{0.1, 0.5, 1, 5, 10, 20},
 		speedHete:    []float64{0.1, 0.25, 0.5, 1.0, 2.0},
+		TCR:          []float64{0.1, 0.5, 1, 5, 10, 20}, //Transmission Cost Ratio
+		actionCount:  []int{2, 4, 8, 16},
 	}
 
 	isload := true
@@ -183,41 +243,44 @@ func comparison(state []int) {
 				continue
 			}
 			for l := 0; l < len(cases.replicaCount); l++ {
-				if isload && state[2] != l {
-					continue
-				}
 				for m := 0; m < len(cases.nodes); m++ {
 					for n := 0; n < len(cases.CCR); n++ {
 						for o := 0; o < len(cases.speedHete); o++ {
-							var q int64
-							for q = 0; q < int64(cases.count); q++ {
-								current := []string{}
-								current = append(current, fmt.Sprintf("%d", cases.podCount[i]))
-								current = append(current, fmt.Sprintf("%.1f", cases.alpha[j]))
-								current = append(current, fmt.Sprintf("%d", cases.replicaCount[l]))
-								current = append(current, fmt.Sprintf("%d", cases.nodes[m]))
-								current = append(current, fmt.Sprintf("%.1f", cases.CCR[n]))
-								current = append(current, fmt.Sprintf("%.1f", cases.speedHete[o]))
+							for p := 0; p < len(cases.TCR); p++ {
+								for r := 0; r < len(cases.actionCount); r++ {
+									var q int64
+									for q = 0; q < int64(cases.count); q++ {
+										current := []string{}
+										current = append(current, fmt.Sprintf("%d", cases.podCount[i]))
+										current = append(current, fmt.Sprintf("%.1f", cases.alpha[j]))
+										current = append(current, fmt.Sprintf("%d", cases.replicaCount[l]))
+										current = append(current, fmt.Sprintf("%d", cases.nodes[m]))
+										current = append(current, fmt.Sprintf("%.1f", cases.CCR[n]))
+										current = append(current, fmt.Sprintf("%.1f", cases.speedHete[o]))
+										current = append(current, fmt.Sprintf("%.1f", cases.TCR[p]))
+										current = append(current, fmt.Sprintf("%d", cases.actionCount[r]))
+										config := comparisonConfig{
+											podCount:           cases.podCount[i],
+											alpha:              cases.alpha[j],
+											replicaNum:         cases.replicaCount[l],
+											nodeCount:          cases.nodes[m],
+											ccr:                cases.CCR[n],
+											speedHeterogeneity: cases.speedHete[o],
+											tcr:                cases.TCR[p],
+											actionNum:          cases.actionCount[r],
+										}
 
-								config := comparisonConfig{
-									podCount:           cases.podCount[i],
-									alpha:              cases.alpha[j],
-									replicaNum:         cases.replicaCount[l],
-									nodeCount:          cases.nodes[m],
-									ccr:                cases.CCR[n],
-									speedHeterogeneity: cases.speedHete[o],
+										current = append(current, doWithTimeout(q, config)...)
+										w.Write(current)
+										w.Flush()
+									}
 								}
-
-								current = append(current, doWithTimeout(q, config)...)
-								w.Write(current)
-								w.Flush()
-
 							}
 						}
 					}
 				}
-				return
 			}
+			return
 		}
 	}
 }

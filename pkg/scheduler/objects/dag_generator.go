@@ -41,6 +41,7 @@ type comparisonConfig struct {
 	nodeMemRange          int
 	ccr                   float64
 	rrc                   float64
+	tcr 				  float64
 	speedHeterogeneity    float64
 	resourceHeterogeneity float64
 	averageNodeResource   float64
@@ -234,7 +235,7 @@ func generateRandomDAGWithConfig(config comparisonConfig) *JobsDAG {
 
 			
 			for _, child := range j.children {
-				r.finalDataSize[child] = rand.Float64() * 100 * float64(config.actionNum) * config.ccr
+				r.finalDataSize[child] = rand.Float64() * 100 * float64(config.actionNum) * config.ccr * config.tcr
 			}
 			
 		}
