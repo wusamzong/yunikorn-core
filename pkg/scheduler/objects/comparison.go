@@ -50,8 +50,7 @@ func performOperation() {
     fmt.Println("Operation performed")
 }
 
-func testWithCase(seed int64 ,config comparisonConfig) []string {
-
+func settingConfig(config comparisonConfig) comparisonConfig{
 	width := int(math.Sqrt(float64(config.podCount) / ((1.0 - config.alpha) / config.alpha)))
 	config.width = width
 	config.replicaCPURange = 4 
@@ -61,6 +60,11 @@ func testWithCase(seed int64 ,config comparisonConfig) []string {
 	config.nodeMemRange = config.replicaNum*2
 	
 	config.actionNum = 10
+	return config
+}
+
+func testWithCase(seed int64 ,config comparisonConfig) []string {
+	config=settingConfig(config)
 
 	current:=[]string{}
 	for algoCount := 0; algoCount < 3; algoCount++ {
@@ -114,7 +118,7 @@ func createRandNodeByConfig(config comparisonConfig) ([]*node, *bandwidth) {
 			mem:           resource * 512,
 			allocatedCpu:  0,
 			allocatedMem:  0,
-			executionRate: 1+rand.Float64()*5*config.speedHeterogeneity,
+			executionRate: 1+rand.Float64()*4*config.speedHeterogeneity,
 		}
 		nodes = append(nodes, n)
 	}

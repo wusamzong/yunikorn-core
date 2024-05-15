@@ -16,6 +16,8 @@ type Job struct {
 	replicaNum           int
 	replicaCpu           int
 	replicaMem           int
+	cpuIntensive         float64
+	memIntensive		 float64
 	actionNum            int
 	predictExecutionTime float64
 	pathPriority         float64
@@ -193,11 +195,12 @@ func (job *Job) decideNode(nodes []*node, bw *bandwidth) bool {
 			}
 
 			var time float64
-
+			cpuUsage := float64(currentJobCpuUsage+node.allocatedCpu)/float64(node.cpu)
+			memUsage := float64(currentJobMemUsage+node.allocatedMem)/float64(node.mem)
 			// transmission time + Execution time "Inside" the Job
 			for _, action := range replica.actions {
 				var transmissionTime, executionTime float64
-				executionTime = action.executionTime / node.executionRate
+				executionTime = action.executionTime/dynamicExecutionModel(node.executionRate, cpuUsage, memUsage, job)
 				time += executionTime
 				transmissionTime = 0
 				if idx != 0 {
@@ -210,7 +213,6 @@ func (job *Job) decideNode(nodes []*node, bw *bandwidth) bool {
 							curTransmissionTime = 0
 						} else {
 							curTransmissionTime = datasize / bw.values[from][to]
-						    // fmt.Println(datasize, bw.values[from][to], curTransmissionTime)
 						}
 
 						if transmissionTime < curTransmissionTime {
@@ -236,7 +238,6 @@ func (job *Job) decideNode(nodes []*node, bw *bandwidth) bool {
 						curTransmissionTime = 0
 					} else {
 						curTransmissionTime = datasize / bw.values[from][to]
-						// fmt.Println(datasize, bw.values[from][to], curTransmissionTime)
 					}
 
 					if transmissionTime < curTransmissionTime {
@@ -269,10 +270,7 @@ func (job *Job) decideNode(nodes []*node, bw *bandwidth) bool {
 			if time < replica.minValue {
 				replica.minTime = time
 				replica.minDr = dr
-				// replica.minValue = math.Pow(time, 2) + math.Pow(dr, 2)
 				replica.minValue = time
-				
-				// replica.minValue = time
 				replica.node = node
 			}
 			
@@ -284,29 +282,11 @@ func (job *Job) decideNode(nodes []*node, bw *bandwidth) bool {
 			fmt.Printf("Job: %d, replica: %d, select nodeID: %d\n", job.ID, idx, replica.node.ID)
 			doneReplica = append(doneReplica, replica)
 		}
-
-		// if replica.minTime > job.makespan {
-		// 	job.makespan = replica.minTime
-		// }
 	}
 
 	var time float64
 	// maxReceive:=0.0
 	for _, r :=range job.replicas{
-		// for _, p := range job.parent{
-		// 	for _, parentReplica := range p.replicas{
-		// 		data:=parentReplica.finalDataSize[job]
-		// 		from := parentReplica.node
-		// 		to := r.node
-		// 		if from==to{
-		// 			continue
-		// 		}
-		// 		if data/bw.values[from][to] > maxReceive{
-		// 			maxReceive=data/bw.values[from][to]
-		// 		} 
-		// 	}
-		// }
-
 		maxTime:=0.0	
 		for _, a := range r.actions{
 			var transmissionTime, executionTime float64
@@ -449,4 +429,15 @@ func (job *Job) getParentReplica() []*replica {
 		}
 	}
 	return result
+}
+
+func dynamicExecutionModel(executionRatio float64, cpuUsage float64, memUsage float64, workflow *Job) float64{
+	alpha_1:=1.0
+	alpha_2:=0.3
+	alpha_3:=0.3
+	
+	term1 := alpha_1 * executionRatio
+	term2 := alpha_2 * math.Pow(1+cpuUsage, workflow.cpuIntensive)
+	term3 := alpha_3 * math.Pow(1+memUsage, workflow.memIntensive) 
+	return term1/(term2+term3)
 }

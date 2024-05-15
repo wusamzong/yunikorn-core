@@ -299,7 +299,6 @@ func TestTestWithCase(t *testing.T) {
 		result := testWithCase(seed, config)
 		fmt.Println(result)
 	}
-
 }
 
 func TestComparisonSample(t *testing.T) {

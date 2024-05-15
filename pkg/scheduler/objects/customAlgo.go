@@ -22,6 +22,8 @@ func createCustomAlgo(jobs []*Job, nodes []*node, bw *bandwidth) *customAlgo {
 
 func (c *customAlgo) simulate() (float64, float64) {
 
+	// simulator := createSimulator(c.nodes)
+
 	allocManager := intervalAllocManager{
 		totalCapacity: []float64{},
 		totalAllocte:  []float64{0.0, 0.0},

@@ -23,7 +23,7 @@ type comparisonConfig struct {
 	times      int64
 	randomSeed int
 	// about DAG
-	alpha	   float64
+	alpha      float64
 	width      int
 	minPerRank int
 	maxPerRank int
@@ -41,7 +41,7 @@ type comparisonConfig struct {
 	nodeMemRange          int
 	ccr                   float64
 	rrc                   float64
-	tcr 				  float64
+	tcr                   float64
 	speedHeterogeneity    float64
 	resourceHeterogeneity float64
 	averageNodeResource   float64
@@ -156,11 +156,11 @@ func generateRandomDAGWithConfig(config comparisonConfig) *JobsDAG {
 		newNodes := config.width
 		// fmt.Println("add number of nodes: ", newNodes)
 		// fmt.Println(newNodes+nodes, config.podCount)
-		
+
 		// Edges from old nodes ('nodes') to new ones ('newNodes').
 		for j := 0; j < nodes; j++ {
 			for k := 0; k < newNodes; k++ {
-				if len(createdJobs)*config.replicaNum>=config.podCount{
+				if len(createdJobs)*config.replicaNum >= config.podCount {
 					break
 				}
 				if rand.Intn(100) <= config.percent {
@@ -178,7 +178,7 @@ func generateRandomDAGWithConfig(config comparisonConfig) *JobsDAG {
 		nodes += newNodes // Accumulate into old node set.
 	}
 	// fmt.Println("}")
-	
+
 	// 2. format jobId
 	tmpJobID := []int{}
 	for key := range createdJobs {
@@ -199,14 +199,16 @@ func generateRandomDAGWithConfig(config comparisonConfig) *JobsDAG {
 		replicaCpu := config.replicaCPURange * 500
 		replicaMem := config.replicaMemRange * 512
 		job := &Job{
-			ID:         value,
-			replicaNum: replicaNum,
-			replicaCpu: replicaCpu,
-			replicaMem: replicaMem,
-			actionNum:  config.actionNum,
-			parent:     []*Job{},
-			children:   []*Job{},
-			finish:     0,
+			ID:           value,
+			replicaNum:   replicaNum,
+			replicaCpu:   replicaCpu,
+			replicaMem:   replicaMem,
+			cpuIntensive: rand.Float64()*1.2,
+			memIntensive: rand.Float64()*1.2,
+			actionNum:    config.actionNum,
+			parent:       []*Job{},
+			children:     []*Job{},
+			finish:       0,
 		}
 		createRandReplicaByCCR(job, config.ccr)
 		jobsDAG.replicasCount += replicaNum
@@ -233,11 +235,10 @@ func generateRandomDAGWithConfig(config comparisonConfig) *JobsDAG {
 			r.children = childrenReplicas
 			r.parent = parentReplicas
 
-			
 			for _, child := range j.children {
-				r.finalDataSize[child] = rand.Float64() * 100 * float64(config.actionNum) * config.ccr * config.tcr
+				r.finalDataSize[child] = rand.Float64() * 75 * float64(config.actionNum) * config.ccr * config.tcr
 			}
-			
+
 		}
 	}
 	// fmt.Println(jobsDAG.replicasCount)
@@ -371,25 +372,18 @@ func createRandReplica(j *Job) {
 	}
 }
 
-
 func createRandReplicaByCCR(j *Job, ccr float64) {
 	for i := 0; i < j.replicaNum; i++ {
 		j.createReplica()
 	}
 
 	for i := 0; i < j.actionNum; i++ {
-		randExecutionTime := rand.Float64() * 50
+		randExecutionTime := rand.Float64() * 50 + 50
 		for _, r := range j.replicas {
 			a := r.createAction(randExecutionTime)
 			for _, r := range j.replicas {
-				a.datasize[r] = rand.Float64() * 100 * ccr
+				a.datasize[r] = rand.Float64() * 75 * ccr
 			}
 		}
 	}
-
-	// for _, r := range j.replicas {
-	// 	for _, child := range j.children {
-	// 		r.finalDataSize[child] = rand.Float64() * 100000*(1-ccr)
-	// 	}
-	// }
 }

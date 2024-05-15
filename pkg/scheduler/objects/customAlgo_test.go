@@ -19,4 +19,24 @@ func TestSimulateCustom(t *testing.T) {
 	fmt.Println(makespan, resourceUsage)
 }
 
+func TestCustom(t *testing.T){
+	rand.Seed(2)
+	config := comparisonConfig{
+		podCount:           100,
+		alpha:              0.2,
+		replicaNum:         4,
+		nodeCount:          8,
+		ccr:                20.0,
+		speedHeterogeneity: 1.0,
+	}
+	config = settingConfig(config)
 
+	nodes, bw := createRandNodeByConfig(config)
+	jobsDag := generateRandomDAGWithConfig(config)
+	for i := 0; i < 1; i++ {
+		c := createCustomAlgo(jobsDag.Vectors, nodes, bw)
+		makespan, SLR := c.simulate()
+		fmt.Println(makespan, SLR)
+	}
+
+}
