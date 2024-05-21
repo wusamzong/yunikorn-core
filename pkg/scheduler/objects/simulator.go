@@ -1,6 +1,7 @@
 package objects
 
 import (
+	"fmt"
 	"math"
 )
 
@@ -11,16 +12,35 @@ const (
 	replicaTransferComplete  = "transferComplete"
 	replicaComplete          = "complete"
 
-	jobComplete  = "jobComplete"
-	jobExecuting = "jobExecuting"
+	jobComplete              = "jobComplete"
+	jobExecuting             = "jobExecuting"
+	finishParentJobTransfer  = "finishParentJobTransfer"
+	waitingParentJobTransfer = "waitingParentJobTransfer"
+	waitingParentJobFinish   = "waitingParentJobFinish"
 )
 
 type simulator struct {
 	bw           *bandwidth
 	current      float64
 	updateTiming []float64
+	pending      []*pendJob
 	allocations  []*allocJob
+	finished     []*finishJob
 	nodesUsage   map[*node]*simulateNodeUsage
+}
+
+type pendJob struct {
+	Job        *Job
+	status     string
+	finalState []*finalTransferState
+}
+
+type finalTransferState struct {
+	status     string
+	finishTime float64
+	pivot      float64
+	volume     float64
+	bandwidth  float64
 }
 
 type simulateNodeUsage struct {
@@ -54,7 +74,13 @@ type state struct {
 	volume       float64
 }
 
+type finishJob struct {
+	Job          *Job
+	finishedTime float64
+}
+
 func createSimulator(nodes []*node, bw *bandwidth) *simulator {
+	fmt.Println("create simulator!")
 	return &simulator{
 		bw:           bw,
 		current:      0.0,
@@ -77,6 +103,26 @@ func createSimulateNodes(nodes []*node) map[*node]*simulateNodeUsage {
 
 // Adding Allocation
 
+func (s *simulator) addPendJob(job *Job) {
+	pendingJob := &pendJob{
+		Job:        job,
+		status:     waitingParentJobFinish,
+		finalState: []*finalTransferState{},
+	}
+
+	if pendingJob.isAllParentFinish(s){
+		pendingJob.status=waitingParentJobTransfer
+		pendingJob.initFinalTransferState(s)
+		if pendingJob.isParentTransferDone(){
+			s.allocate(pendingJob.Job)
+		}else{
+			s.pending = append(s.pending, pendingJob)
+		}
+	}else{
+		s.pending = append(s.pending, pendingJob)
+	}
+}
+
 func (s *simulator) allocate(job *Job) {
 	newAllocJob := []*allocJob{}
 	newAllocJob = append(newAllocJob, &allocJob{
@@ -90,6 +136,14 @@ func (s *simulator) allocate(job *Job) {
 	s.initDynamicExecutionState(newAllocJob) // calculate before allocatie resource
 	// s.collectFinishTime(newAllocJob)
 	s.addingUsage(newAllocJob)
+	s.allocations = append(s.allocations, newAllocJob...)
+}
+
+func (s *simulator) addFinishedJob(job *Job){
+	s.finished = append(s.finished, &finishJob{
+		Job: job,
+		finishedTime: s.current,
+	})
 }
 
 func (s *simulator) createAllocReplica(job *Job) []*allocReplica {
@@ -156,52 +210,138 @@ func (s *simulator) updateTime() {
 	var minEndTime float64 = math.MaxFloat64
 	for _, j := range s.allocations {
 		for _, r := range j.allocReplica {
-			if minEndTime > r.state.finishTime {
+			if minEndTime > r.state.finishTime && s.current < r.state.finishTime {
 				minEndTime = r.state.finishTime
 			}
 		}
+	}
+	if minEndTime == math.MaxFloat64 {
+		return
 	}
 	s.current = minEndTime
 }
 
 func (s *simulator) updateState() {
-	for _, j := range s.allocations {
-		j.updateState(s.current, s)
+	for _, pendingJob := range s.pending {
+		if pendingJob.status == waitingParentJobTransfer{
+			pendingJob.updateParentTransfer(s)
+			if pendingJob.isParentTransferDone(){
+				s.releasePendJob(pendingJob)
+				s.allocate(pendingJob.Job)
+			}
+		}
+	}
+
+	for _, allocJob := range s.allocations {
+		allocJob.updateState(s)
+		if allocJob.state.status == jobComplete{
+			s.releaseAllocJob(allocJob)
+			s.addFinishedJob(allocJob.Job)
+		}
+	}
+
+	for _, pendingJob := range s.pending{
+		if pendingJob.status == waitingParentJobFinish{
+			if pendingJob.isAllParentFinish(s){
+				pendingJob.status=waitingParentJobTransfer
+				pendingJob.initFinalTransferState(s)
+				if pendingJob.isParentTransferDone(){
+					s.allocate(pendingJob.Job)
+				}
+			}
+		}
 	}
 }
 
-func (j *allocJob) updateState(current float64, s *simulator) {
-	isAllCalculateComplete := true
-	isAllTransferringComplete := true
-	for _, r := range j.allocReplica {
-		r.updateDynamicExecutionState(current)
-		if r.state.status == replicaCalculating {
-			isAllCalculateComplete = false
-		}
-		if r.state.status == replicaTransferring {
-			isAllTransferringComplete = false
+func (s *simulator) releaseAllocJob(job *allocJob) {
+	for _, r := range job.allocReplica {
+		node := r.replica.node
+		s.nodesUsage[node].usedCPU -= job.Job.replicaCpu
+		s.nodesUsage[node].usedMemory -= job.Job.replicaMem
+	}
+	for idx, j := range s.allocations {
+		if j == job {
+			s.allocations = append(s.allocations[:idx], s.allocations[idx+1:]...)
 		}
 	}
+}
 
-	if isAllCalculateComplete == true {
-		for _, r := range j.allocReplica {
-			r.initTransferTime(current, s)
+func (s *simulator) releasePendJob(job *pendJob) {
+	for idx, j := range s.pending {
+		if j == job {
+			s.pending = append(s.pending[:idx], s.pending[idx+1:]...)
 		}
-	} else if isAllTransferringComplete == true {
-		if j.isDone(){
+	}
+}
 
-		}else{
+func (j *allocJob) updateState(s *simulator) {
+
+	for _, r := range j.allocReplica {
+		r.updateDynamicExecutionState(s.current) // executing to executing/complete
+	}
+
+	if j.isCalculateDone() {
+		j.initTransferTime(s) // complete to replicaTransfer
+
+	} else if j.isTransferDone() {
+		if j.allActionDone() {
+			j.state.status = jobComplete
+		} else {
 			j.updateActionID()
-			j.initDynamicExecutionState()
+			j.initNextActionState(s) // complete to replicaExecuting
 		}
-		
+	}
+
+}
+
+func (j *allocJob) isCalculateDone() bool {
+	done := true
+	for _, r := range j.allocReplica {
+		if r.state.status != replicaCalculateComplete {
+			done = false
+		}
+	}
+	return done
+}
+
+func (j *allocJob) isTransferDone() bool {
+	done := true
+	for _, r := range j.allocReplica {
+		if r.state.status != replicaTransferComplete {
+			done = false
+		}
+	}
+	return done
+}
+
+func (j *allocJob) updateActionID() {
+	j.state.actionID += 1
+	for _, r := range j.allocReplica {
+		r.state.actionID = j.state.actionID
 	}
 }
 
-func (j *allocJob) updateActionID(){
-	j.state.actionID+=1
+func (j *allocJob) allActionDone() bool {
+	if j.state.actionID == j.Job.actionNum-1 {
+		return true
+	}
+	return false
+}
+
+func (j *allocJob) initNextActionState(s *simulator) {
 	for _, r := range j.allocReplica {
-		r.state.actionID=j.state.actionID
+		r.setState(replicaCalculating)
+		actionID := r.state.actionID
+		node := r.node
+		volume := r.replica.actions[actionID].executionTime
+		replicaCpuRequest := j.Job.replicaCpu
+		replicaMemRequest := j.Job.replicaMem
+		cpuUsage := float64(s.nodesUsage[node].usedCPU-replicaCpuRequest) / float64(node.cpu)
+		memUsage := float64(s.nodesUsage[node].usedMemory-replicaMemRequest) / float64(node.mem)
+		r.state.executeRatio = dynamicExecutionModel(node.executionRate, cpuUsage, memUsage, j.Job)
+		r.state.volume = volume
+		r.state.finishTime = s.current + r.state.volume/r.state.executeRatio
+		r.state.pivot = s.current
 	}
 }
 
@@ -219,8 +359,14 @@ func (r *allocReplica) updateDynamicExecutionState(current float64) {
 			r.state.volume = 0
 		}
 	} else if status == replicaTransferring {
-
+		period := current - r.state.pivot
+		r.state.volume -= period * r.state.executeRatio
+		if r.state.volume <= 0.1 { // Avoiding calculation errors that make it impossible to equal 0 due to calculations.
+			r.state.status = replicaTransferComplete
+			r.state.volume = 0
+		}
 	}
+	r.state.pivot = current
 }
 
 func (r *allocReplica) updateState() {
@@ -237,35 +383,135 @@ func (r *allocReplica) setState(state string) {
 
 // Transfer
 
-func (r *allocReplica) initTransferTime(current float64, s *simulator) {
-	r.setState(replicaTransferring)
-	replica := r.replica
-	job := replica.job
-	actionID := r.state.actionID
-	action := replica.actions[actionID]
+func (j *allocJob) initTransferTime(s *simulator) {
+	for _, r := range j.allocReplica {
+		r.setState(replicaTransferring)
+		replica := r.replica
+		job := replica.job
+		actionID := r.state.actionID
+		action := replica.actions[actionID]
 
-	transmissionTime := 0.0
-	bandwidth:=0.0
-	volume := 0.0
-	for i := 0; i < job.replicaNum; i++ {
-		from := replica.node
-		to := job.replicas[i].node
-		datasize := action.datasize[job.replicas[i]]
-		var curTransmissionTime float64
-		if s.bw.values[from][to] == 0 {
-			curTransmissionTime = 0
-		} else {
-			curTransmissionTime = datasize / s.bw.values[from][to]
+		transmissionTime := 0.0
+		bandwidth := 0.0
+		volume := 0.0
+		for i := 0; i < job.replicaNum; i++ {
+			from := replica.node
+			to := job.replicas[i].node
+			datasize := action.datasize[job.replicas[i]]
+			var curTransmissionTime float64
+			if s.bw.values[from][to] == 0 {
+				curTransmissionTime = 0
+			} else {
+				curTransmissionTime = datasize / s.bw.values[from][to]
+			}
+			if transmissionTime < curTransmissionTime {
+				transmissionTime = curTransmissionTime
+				bandwidth = s.bw.values[from][to]
+				volume = datasize
+			}
 		}
-		if transmissionTime < curTransmissionTime {
-			transmissionTime = curTransmissionTime
-			bandwidth = s.bw.values[from][to]
-			volume = datasize
+
+		r.state.volume = volume
+		r.state.executeRatio = bandwidth
+		r.state.finishTime = s.current + volume/bandwidth
+		r.state.pivot = s.current
+	}
+}
+
+func (pj *pendJob) initFinalTransferState(s *simulator) {
+	job := pj.Job
+	for _, parentJob := range job.parent {
+		for _, parentReplica := range parentJob.replicas {
+			datasize := parentReplica.finalDataSize[job]
+			for _, replica := range job.replicas {
+				from := parentReplica.node
+				to := replica.node
+
+				if from == to {
+					pj.finalState = append(pj.finalState, &finalTransferState{
+						status: "finishParentJobTransfer",
+						finishTime: s.current,
+						pivot: s.current,
+						volume: 0.0,
+						bandwidth: s.bw.values[from][to],
+					})
+				} else {
+					transmissionTime := datasize / s.bw.values[from][to]
+					pj.finalState = append(pj.finalState, &finalTransferState{
+						status: "waitingParentJobTransfer",
+						finishTime: s.current+transmissionTime,
+						pivot: s.current,
+						volume: datasize,
+						bandwidth: s.bw.values[from][to],
+					})					
+				}
+			}
 		}
 	}
+	if pj.isParentTransferDone(){
+		pj.status = finishParentJobTransfer
+	}
+}
 
-	r.state.volume = volume
-	r.state.executeRatio = bandwidth
-	r.state.finishTime = s.current + volume/bandwidth
-	r.state.pivot = s.current
+func (pj *pendJob) isParentTransferDone()bool{
+	if pj.status == finishParentJobTransfer{
+		return true
+	}
+
+	for _, state := range pj.finalState{
+		if state.status==waitingParentJobTransfer{
+			return false
+		}
+	}
+	return true
+}
+
+func (s *simulator) removePendingJob(job *pendJob) {
+	for idx, j := range s.pending {
+		if j == job {
+			s.pending = append(s.pending[:idx], s.pending[idx+1:]...)
+		}
+	}
+}
+
+func (pj *pendJob) updateParentTransfer(s *simulator){
+	if pj.isParentTransferDone(){
+		return 
+	}
+
+	for _, finalstate := range pj.finalState{
+		if finalstate.status==finishParentJobTransfer{
+			continue
+		}else{
+			period := s.current - finalstate.pivot
+			finalstate.volume -= period * finalstate.bandwidth
+			if finalstate.volume <= 0.1{
+				finalstate.status = finishParentJobTransfer
+				finalstate.volume = 0
+			}
+		}
+		finalstate.pivot = s.current
+	}
+}
+
+func (pj *pendJob) isAllParentFinish(s *simulator)bool{
+	if pj.status == waitingParentJobTransfer || pj.status == finishParentJobTransfer{
+		return true
+	}
+	parent:=pj.Job.parent
+	for _, parentJob := range parent{
+		if !s.isJobFinished(parentJob){
+			return false
+		}
+	}
+	return true
+}
+
+func (s *simulator) isJobFinished(job *Job)bool{
+	for _, finishedJob := range s.finished{
+		if job==finishedJob.Job{
+			return true
+		}
+	}
+	return false
 }
