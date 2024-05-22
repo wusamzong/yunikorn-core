@@ -86,10 +86,33 @@ func TestAddTwoPendJob(t *testing.T){
 func printStatus(s *simulator){
 	fmt.Println("Update:")
 	fmt.Println("  current:", s.current)
+	for _, j := range s.pending{
+		fmt.Println("  Job:", j.Job.ID,"  Action:",j.status)
+	}
+
 	for _, j := range s.allocations{
-		fmt.Println("  Job:", j.Job.ID,"  Action:",j.state.actionID)
+		fmt.Println("  Job:", j.Job.ID,"  Action:",j.state.actionID, " Status:", j.state.status)
 		for _, r := range j.allocReplica{
 			fmt.Println("  ",r.state.status, r.state.finishTime)
 		}
+	}
+}
+
+func printJobStatus(s *simulator){
+	fmt.Println("Update--  current:", s.current)
+
+	fmt.Println("  Pending Jobs")
+	for _, j := range s.pending{
+		fmt.Println("    Job:", j.Job.ID,"  Status:",j.status)
+	}
+
+	fmt.Println("  Allocated Jobs")
+	for _, j := range s.allocations{
+		fmt.Println("    Job:", j.Job.ID,"  Action:",j.state.actionID, " Status:", j.state.status)
+	}
+
+	fmt.Println("  Finished Jobs")
+	for _, j := range s.finished{
+		fmt.Println("    Job:", j.Job.ID)
 	}
 }

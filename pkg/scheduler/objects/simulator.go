@@ -225,10 +225,10 @@ func (s *simulator) updateState() {
 	for _, pendingJob := range s.pending {
 		if pendingJob.status == waitingParentJobTransfer{
 			pendingJob.updateParentTransfer(s)
-			if pendingJob.isParentTransferDone(){
-				s.releasePendJob(pendingJob)
-				s.allocate(pendingJob.Job)
-			}
+		}
+		if pendingJob.isParentTransferDone(){
+			s.releasePendJob(pendingJob)
+			s.allocate(pendingJob.Job)
 		}
 	}
 
@@ -350,18 +350,18 @@ func (r *allocReplica) updateDynamicExecutionState(current float64) {
 	if status == replicaCalculateComplete || status == replicaTransferComplete {
 		return
 	}
-
+	
 	if status == replicaCalculating {
 		period := current - r.state.pivot
 		r.state.volume -= period * r.state.executeRatio
-		if r.state.volume <= 0 {
+		if r.state.volume <= 0.000001 {
 			r.state.status = replicaCalculateComplete
 			r.state.volume = 0
 		}
 	} else if status == replicaTransferring {
 		period := current - r.state.pivot
 		r.state.volume -= period * r.state.executeRatio
-		if r.state.volume <= 0.1 { // Avoiding calculation errors that make it impossible to equal 0 due to calculations.
+		if r.state.volume <= 0.000001 { // Avoiding calculation errors that make it impossible to equal 0 due to calculations.
 			r.state.status = replicaTransferComplete
 			r.state.volume = 0
 		}
@@ -392,7 +392,7 @@ func (j *allocJob) initTransferTime(s *simulator) {
 		action := replica.actions[actionID]
 
 		transmissionTime := 0.0
-		bandwidth := 0.0
+		bandwidth := 1.0
 		volume := 0.0
 		for i := 0; i < job.replicaNum; i++ {
 			from := replica.node
@@ -429,7 +429,7 @@ func (pj *pendJob) initFinalTransferState(s *simulator) {
 
 				if from == to {
 					pj.finalState = append(pj.finalState, &finalTransferState{
-						status: "finishParentJobTransfer",
+						status: finishParentJobTransfer,
 						finishTime: s.current,
 						pivot: s.current,
 						volume: 0.0,
@@ -438,7 +438,7 @@ func (pj *pendJob) initFinalTransferState(s *simulator) {
 				} else {
 					transmissionTime := datasize / s.bw.values[from][to]
 					pj.finalState = append(pj.finalState, &finalTransferState{
-						status: "waitingParentJobTransfer",
+						status: waitingParentJobTransfer,
 						finishTime: s.current+transmissionTime,
 						pivot: s.current,
 						volume: datasize,
@@ -514,4 +514,31 @@ func (s *simulator) isJobFinished(job *Job)bool{
 		}
 	}
 	return false
+}
+
+func (s *simulator) isJobAllocated(job *Job)bool{
+	for _, allocatedJob := range s.allocations{
+		if job==allocatedJob.Job{
+			return true
+		}
+	}
+	return false
+}
+
+func (s *simulator) isParentJobFinish(j *Job)bool{
+	for _, parentJob := range j.parent{
+		if !s.isJobFinished(parentJob){
+			return false
+		}
+	}
+	return true
+}
+
+func (s *simulator) isParentAllocated(j *Job)bool{
+	for _, parentJob := range j.parent{
+		if !s.isJobAllocated(parentJob){
+			return false
+		}
+	}
+	return true
 }
