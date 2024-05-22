@@ -306,20 +306,20 @@ func TestComparisonSample(t *testing.T) {
 	nodes, bw := createSampleNode()
 	jobsDag := createSampleJobDAG()
 
-	// c := createCustomAlgo(jobsDag.Vectors, nodes, bw)
-	// makespan, resourceUsage := c.simulate()
-	// fmt.Println("=>  ", makespan, resourceUsage)
-
-	// nodes, bw = createSampleNode()
-	// jobsDag = createSampleJobDAG()
-	m := createMPEFT(jobsDag.Vectors, nodes, bw)
-	makespan, resourceUsage := m.simulate()
+	c := createCustomAlgo(jobsDag.Vectors, nodes, bw)
+	makespan, resourceUsage := c.simulate()
 	fmt.Println("=>  ", makespan, resourceUsage)
 
 	// nodes, bw = createSampleNode()
 	// jobsDag = createSampleJobDAG()
+	// m := createMPEFT(jobsDag.Vectors, nodes, bw)
+	// makespan, resourceUsage := m.simulate()
+	// fmt.Println("=>  ", makespan, resourceUsage)
+
+	// nodes, bw = createSampleNode()
+	// jobsDag = createSampleJobDAG()
 	// p := createIPPTS(jobsDag.Vectors, nodes, bw)
-	// makespan, resourceUsage = p.simulate()
+	// makespan, resourceUsage := p.simulate()
 	// fmt.Println("=>  ", makespan, resourceUsage)
 }
 

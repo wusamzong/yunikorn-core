@@ -170,8 +170,11 @@ func (s *simulator) createState(replica *replica) *state {
 func (s *simulator) addingUsage(newAllocJob []*allocJob) {
 	for _, j := range newAllocJob {
 		for _, r := range j.allocReplica {
-			s.nodesUsage[r.node].usedCPU += j.Job.replicaCpu
-			s.nodesUsage[r.node].usedMemory += j.Job.replicaMem
+			node := r.node
+			s.nodesUsage[node].usedCPU += j.Job.replicaCpu
+			s.nodesUsage[node].usedMemory += j.Job.replicaMem
+			node.allocatedCpu += j.Job.replicaCpu
+			node.allocatedMem += j.Job.replicaMem 
 		}
 	}
 }
@@ -191,14 +194,6 @@ func (s *simulator) initDynamicExecutionState(newAllocJob []*allocJob) {
 	}
 }
 
-// func (s *simulator) collectFinishTime(newAllocJob []*allocJob){
-// 	for _, j := range newAllocJob {
-// 		for _, r := range j.allocReplica {
-// 			s.updateTiming = append(s.updateTiming, r.state.finishTime)
-// 		}
-// 	}
-// }
-
 // Update
 
 func (s *simulator) update() {
@@ -208,6 +203,16 @@ func (s *simulator) update() {
 
 func (s *simulator) updateTime() {
 	var minEndTime float64 = math.MaxFloat64
+	for _, j := range s.pending{
+		for _, finalState := range j.finalState{
+			if finalState.status == waitingParentJobTransfer{
+				if minEndTime > finalState.finishTime && s.current < finalState.finishTime{
+					minEndTime = finalState.finishTime
+				}
+			}
+		}
+	}
+
 	for _, j := range s.allocations {
 		for _, r := range j.allocReplica {
 			if minEndTime > r.state.finishTime && s.current < r.state.finishTime {
@@ -258,6 +263,8 @@ func (s *simulator) releaseAllocJob(job *allocJob) {
 		node := r.replica.node
 		s.nodesUsage[node].usedCPU -= job.Job.replicaCpu
 		s.nodesUsage[node].usedMemory -= job.Job.replicaMem
+		node.allocatedCpu -= job.Job.replicaCpu
+		node.allocatedMem -= job.Job.replicaMem 
 	}
 	for idx, j := range s.allocations {
 		if j == job {
@@ -392,7 +399,7 @@ func (j *allocJob) initTransferTime(s *simulator) {
 		action := replica.actions[actionID]
 
 		transmissionTime := 0.0
-		bandwidth := 1.0
+		bandwidth := 0.0
 		volume := 0.0
 		for i := 0; i < job.replicaNum; i++ {
 			from := replica.node
@@ -413,7 +420,7 @@ func (j *allocJob) initTransferTime(s *simulator) {
 
 		r.state.volume = volume
 		r.state.executeRatio = bandwidth
-		r.state.finishTime = s.current + volume/bandwidth
+		r.state.finishTime = s.current + transmissionTime
 		r.state.pivot = s.current
 	}
 }

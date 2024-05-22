@@ -29,7 +29,7 @@ func TestAllocateJob(t *testing.T) {
 
 	for i:=0; i<30;i++{
 		simulator.update()
-		printStatus(simulator)
+		printAllDetailStatus(simulator)
 	}
 }
 
@@ -76,26 +76,38 @@ func TestAddTwoPendJob(t *testing.T){
 
 	for i:=0; i<30;i++{
 		simulator.update()
-		printStatus(simulator)
+		printAllDetailStatus(simulator)
 		if len(simulator.finished)==2{
 			break
 		}
 	}
 }
 
-func printStatus(s *simulator){
-	fmt.Println("Update:")
+func printAllDetailStatus(s *simulator){
+	fmt.Println("Update--  current:", s.current)
 	fmt.Println("  current:", s.current)
-	for _, j := range s.pending{
-		fmt.Println("  Job:", j.Job.ID,"  Action:",j.status)
-	}
 
-	for _, j := range s.allocations{
-		fmt.Println("  Job:", j.Job.ID,"  Action:",j.state.actionID, " Status:", j.state.status)
-		for _, r := range j.allocReplica{
-			fmt.Println("  ",r.state.status, r.state.finishTime)
+	fmt.Println("  Pending Jobs")
+	for _, j := range s.pending{
+		fmt.Println("    Job:", j.Job.ID,"  Action:",j.status)
+		for _, finalTransferStatus := range j.finalState{
+			fmt.Println("    ", finalTransferStatus.status, finalTransferStatus.finishTime)
 		}
 	}
+	
+	fmt.Println("  Allocated Jobs")
+	for _, j := range s.allocations{
+		fmt.Println("    Job:", j.Job.ID,"  Action:",j.state.actionID, " Status:", j.state.status)
+		for _, r := range j.allocReplica{
+			fmt.Println("    ",r.state.status, r.state.finishTime)
+		}
+	}
+
+	fmt.Println("  Finished Jobs")
+	for _, j := range s.finished{
+		fmt.Println("    Job:", j.Job.ID)
+	}
+	
 }
 
 func printJobStatus(s *simulator){

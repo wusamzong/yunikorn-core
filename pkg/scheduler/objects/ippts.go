@@ -1,7 +1,6 @@
 package objects
 
 import (
-	"fmt"
 	"math"
 	"sort"
 )
@@ -97,22 +96,9 @@ func (p *ippts) allocation() {
 }
 
 func (p *ippts) simulate() (float64, float64) {
+	simulator := createSimulator(p.nodes, p.bw)
 	p.allocation()
-	allocManager := intervalAllocManager{
-		totalCapacity: []float64{},
-		totalAllocte:  []float64{0.0, 0.0},
-		totalUsage:    []float64{0.0, 0.0},
-		current:       0,
-	}
-	transManager := intervalTransmissionManager{
-		doneTransmission:   map[*replica]map[*replica]bool{},
-		customTransmission: map[*replica]map[*replica]float64{},
-		transmission:       []*intervalTransmission{},
-	}
 
-	allocManager.initCapacity(p.nodes)
-	allocManager.initFinishedAllocation(p.jobs)
-	transManager.initTransmission(p.jobs)
 	queue := make([]*Job, len(p.jobs))
 	copy(queue, p.jobs)
 
@@ -133,48 +119,34 @@ func (p *ippts) simulate() (float64, float64) {
 			}
 
 			done := p.decideNode(job)
-			// allParentDone := replica.allParentScheduled(scheduledReplica)
-			allParentDone := job.allParentDone()
-			// isAllParentTransmitted := transManager.transmittedStatus(job)
-			// fmt.Print("jobID:", job.ID, ", done:", done, ", allParentDone:", allParentDone, ", makespan:", job.makespan)
-			// fmt.Print(", Parent: ")
-			// for _, parent := range job.parent {
-			// 	fmt.Printf("%d ,", parent.ID)
-			// }
-			// fmt.Println()
-			if done && allParentDone {
-				// fmt.Println("allocate: ", job.ID)
-				// scheduledReplica[replica] = true
-				fmt.Println("JobID:", job.ID, " is allocated")
-				transManager.addJobInterval(job, allocManager.current, p.bw)
-				
+
+			if done && simulator.isParentJobFinish(job)  {
+				simulator.addPendJob(job)
 				scheduledJob[job] = true
-				allocManager.allocate(job, &transManager)
-				// for _, node := range p.nodes {
-				// 	fmt.Printf("nodeId:%d, capacity:{%d, %d}, allocated:{%d, %d}\n", node.ID, node.cpu, node.mem, node.allocatedCpu, node.allocatedMem)
-				// }
+
 			} else {
 				reserveQueue = append(reserveQueue, job)
 
 			}
 		}
 		queue = append(queue, reserveQueue...)
-
-		current:=nextInterval(&transManager, &allocManager)
-		_ = allocManager.releaseResource()
-		_ = transManager.releaseInterval(current)
-		
-		if allocManager.current == math.MaxFloat64 {
-			return 0.0, 0.0
+		finishedLength:=len(simulator.finished)
+		for len(simulator.allocations)+len(simulator.pending)>0{
+			simulator.update()
+			if finishedLength < len(simulator.finished){
+				break
+			}
 		}
 
 	}
-	_, aveBw := calcAve(p.nodes, p.bw)
-	criticalPath:=getCriticalPath(p.jobs, &transManager, &allocManager)
-	makespan, _:=allocManager.getResult()
-	SLR := calSLR(p.nodes, aveBw, criticalPath, makespan)
+	for len(simulator.allocations)+len(simulator.pending)>0{
+		simulator.update()
+		if len(simulator.pending) ==0 && len(simulator.allocations)==0{
+			break
+		}
+	}
 
-	return makespan, SLR
+	return simulator.current, 0.0
 }
 
 func (p *ippts) tryNode(r *replica) bool {
@@ -431,8 +403,12 @@ func (p *ippts) decideNode(j *Job) bool {
 			if node.cpu-node.allocatedCpu-currentJobCpuUsage < j.replicaCpu || node.mem-node.allocatedMem-currentJobMemUsage < j.replicaMem {
 				continue
 			}
-			if min > p.Lhead[r][node] {
-				min = p.Lhead[r][node]
+
+			cpuUsage := float64(currentJobCpuUsage+node.allocatedCpu)/float64(node.cpu)
+			memUsage := float64(currentJobMemUsage+node.allocatedMem)/float64(node.mem)
+			dynamicValue:=p.Lhead[r][node] / dynamicExecutionModel(node.executionRate, cpuUsage, memUsage, j)
+			if min > dynamicValue {
+				min = dynamicValue
 				selectNode = node
 			}
 		}

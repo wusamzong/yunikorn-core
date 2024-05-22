@@ -90,7 +90,7 @@ func (c *customAlgo) simulate() (float64, float64) {
 		finishedLength:=len(simulator.finished)
 		for len(simulator.allocations)+len(simulator.pending)>0{
 			simulator.update()
-			// printJobStatus(simulator)
+			// printAllDetailStatus(simulator)
 			if finishedLength < len(simulator.finished){
 				break
 			}
@@ -99,7 +99,7 @@ func (c *customAlgo) simulate() (float64, float64) {
 	}
 	for len(simulator.allocations)+len(simulator.pending)>0{
 		simulator.update()
-		// printJobStatus(simulator)
+		// printAllDetailStatus(simulator)
 		if len(simulator.pending) ==0 && len(simulator.allocations)==0{
 			break
 		}

@@ -1,7 +1,7 @@
 package objects
 
 import (
-	"fmt"
+	// "fmt"
 	"math"
 	"sort"
 	// "os"
@@ -150,25 +150,7 @@ func (m *mpeft) allocation() {
 
 func (m *mpeft) simulate() (float64, float64) {
 	m.allocation()
-	allocManager := intervalAllocManager{
-		totalCapacity: []float64{},
-		totalAllocte:  []float64{0.0, 0.0},
-		totalUsage:    []float64{0.0, 0.0},
-		current:       0,
-	}
-	allocManager.initCapacity(m.nodes)
-	allocManager.initFinishedAllocation(m.jobs)
-
-	transManager := intervalTransmissionManager{
-		doneTransmission:   map[*replica]map[*replica]bool{},
-		customTransmission: map[*replica]map[*replica]float64{},
-		transmission:       []*intervalTransmission{},
-	}
-	transManager.initTransmission(m.jobs)
-
-	// for _, node := range m.nodes {
-	// 	fmt.Printf("nodeId:%d, capacity:{%d, %d}, allocated:{%d, %d}\n", node.ID, node.cpu, node.mem, node.allocatedCpu, node.allocatedMem)
-	// }
+	simulator := createSimulator(m.nodes, m.bw)
 
 	queue := make([]*Job, len(m.jobs))
 
@@ -189,49 +171,35 @@ func (m *mpeft) simulate() (float64, float64) {
 				continue
 			}
 			done := m.decideNode(job)
-			allParentDone := job.allParentDone()
-			// isAllParentTransmitted := transManager.transmittedStatus(job)
-			// fmt.Println("jobID:", job.ID, "done:", done, ", allParentDone:", allParentDone, ", makespan:", job.makespan)
-			// fmt.Print("Parent: ")
-			// for _, parent := range job.parent {
-			// 	fmt.Printf("%d ,", parent.ID)
-			// }
-			// fmt.Println()
-			if done && allParentDone {
-				// fmt.Println("jobID:", job.ID)
-				fmt.Println("JobID:", job.ID, " is allocated")
-				transManager.addJobInterval(job, allocManager.current, m.bw)
-				
+
+			if done && simulator.isParentJobFinish(job) {
+				simulator.addPendJob(job)
 				scheduledJob[job] = true
-
-				allocManager.allocate(job, &transManager)
-				// for _, node := range m.nodes {
-				// 	fmt.Printf("nodeId:%d, capacity:{%d, %d}, allocated:{%d, %d}\n", node.ID, node.cpu, node.mem, node.allocatedCpu, node.allocatedMem)
-				// 	if node.cpu<node.allocatedCpu{
-				// 		os.Exit(-1)
-				// 	}
-				// }
-
 			} else {
 				reserveQueue = append(reserveQueue, job)
 			}
 		}
 		queue = append(queue, reserveQueue...)
 
-		current:=nextInterval(&transManager, &allocManager)
-		_ = allocManager.releaseResource()
-		_ = transManager.releaseInterval(current)
-
-		if allocManager.current == math.MaxFloat64 {
-			return 0.0, 0.0
+		finishedLength:=len(simulator.finished)
+		for len(simulator.allocations)+len(simulator.pending)>0{
+			simulator.update()
+			// printJobStatus(simulator)
+			if finishedLength < len(simulator.finished){
+				break
+			}
 		}
 
+
 	}
-	_, aveBw := calcAve(m.nodes, m.bw)
-	criticalPath:=getCriticalPath(m.jobs, &transManager, &allocManager)
-	makespan, _:=allocManager.getResult()
-	SLR := calSLR(m.nodes, aveBw, criticalPath, makespan)
-	return makespan, SLR
+	for len(simulator.allocations)+len(simulator.pending)>0{
+		simulator.update()
+		// printJobStatus(simulator)
+		if len(simulator.pending) ==0 && len(simulator.allocations)==0{
+			break
+		}
+	}
+	return simulator.current, 0.0
 }
 
 func (m *mpeft) tryNode(r *replica) bool {
@@ -633,9 +601,12 @@ func (m *mpeft) decideNode(j *Job) bool {
 			if node.mem-node.allocatedMem < currentJobMemUsage+j.replicaMem {
 				continue
 			}
-
-			if min > m.MEFT[r][node] {
-				min = m.MEFT[r][node]
+			
+			cpuUsage := float64(currentJobCpuUsage+node.allocatedCpu)/float64(node.cpu)
+			memUsage := float64(currentJobMemUsage+node.allocatedMem)/float64(node.mem)
+			dynamicValue:=m.MEFT[r][node] / dynamicExecutionModel(node.executionRate, cpuUsage, memUsage, j)
+			if min > dynamicValue {
+				min = dynamicValue
 				selectNode = node
 			}
 		}
@@ -651,22 +622,7 @@ func (m *mpeft) decideNode(j *Job) bool {
 	}
 
 	var time float64
-	// maxReceive:=0.0
 	for _, r := range j.replicas {
-
-		// for _, parent := range j.parent{
-		// 	for _, parentReplica := range parent.replicas{
-		// 		data:=parentReplica.finalDataSize[j]
-		// 		from := parentReplica.node
-		// 		to := r.node
-		// 		if from==to{
-		// 			continue
-		// 		}
-		// 		if data/m.bw.values[from][to] > maxReceive{
-		// 			maxReceive=data/m.bw.values[from][to]
-		// 		}
-		// 	}
-		// }
 
 		maxTime := 0.0
 		for _, a := range r.actions {
@@ -695,6 +651,5 @@ func (m *mpeft) decideNode(j *Job) bool {
 		time += maxTime
 	}
 	j.makespan = time
-	// j.receiveTime = maxReceive
 	return true
 }
