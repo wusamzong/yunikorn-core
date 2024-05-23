@@ -112,6 +112,9 @@ func (s *simulator) addPendJob(job *Job) {
 		finalState: []*finalTransferState{},
 	}
 
+	s.reserveUsage(pendingJob)
+	
+
 	if pendingJob.isAllParentFinish(s) {
 		pendingJob.status = waitingParentJobTransfer
 		pendingJob.initFinalTransferState(s)
@@ -138,7 +141,7 @@ func (s *simulator) allocate(job *Job) {
 	})
 	s.initDynamicExecutionState(newAllocJob) // calculate before allocatie resource
 	// s.collectFinishTime(newAllocJob)
-	s.addingUsage(newAllocJob)
+	
 	s.allocations = append(s.allocations, newAllocJob...)
 }
 
@@ -171,15 +174,13 @@ func (s *simulator) createState(replica *replica) *state {
 	}
 }
 
-func (s *simulator) addingUsage(newAllocJob []*allocJob) {
-	for _, j := range newAllocJob {
-		for _, r := range j.allocReplica {
-			node := r.node
-			s.nodesUsage[node].usedCPU += j.Job.replicaCpu
-			s.nodesUsage[node].usedMemory += j.Job.replicaMem
-			node.allocatedCpu += j.Job.replicaCpu
-			node.allocatedMem += j.Job.replicaMem
-		}
+func (s *simulator) reserveUsage(newPendJob *pendJob) {
+	for _, r := range newPendJob.Job.replicas {
+		node := r.node
+		s.nodesUsage[node].usedCPU += newPendJob.Job.replicaCpu
+		s.nodesUsage[node].usedMemory += newPendJob.Job.replicaMem
+		node.allocatedCpu += newPendJob.Job.replicaCpu
+		node.allocatedMem += newPendJob.Job.replicaMem
 	}
 }
 
@@ -563,3 +564,11 @@ func (s *simulator) getFinishedJobByJob (j *Job)*finishJob{
 	return nil
 }
 
+func (s *simulator) printFinishedJob(){
+	for _, finishedJob := range s.finished{
+		fmt.Println("JobID: ",finishedJob.Job.ID, ",allocatedTime: ", finishedJob.allocatedTime, ",finishedTime:", finishedJob.finishedTime, ",length:", (finishedJob.finishedTime-finishedJob.allocatedTime)/10)
+		for _, r := range finishedJob.Job.replicas{
+			fmt.Println(" replicaID:", r.ID, ",selected Node:", r.node.ID)
+		}
+	}
+}

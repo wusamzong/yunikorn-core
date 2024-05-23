@@ -46,7 +46,7 @@ func (c *customAlgo) simulate() (float64, float64) {
 	for availJobsHeap.Len() > 0 {
 		var job *Job
 		reserveQueue := []*Job{}
-
+		// fmt.Println()
 		// fmt.Print("Queue: ")
 		// for i:=0;i<availJobsHeap.Len();i++{
 		// 	fmt.Print((*availJobsHeap).jobs[i].ID, " ")
@@ -54,6 +54,7 @@ func (c *customAlgo) simulate() (float64, float64) {
 		// fmt.Println()
 
 		for availJobsHeap.Len() > 0 {
+			
 
 			job = heap.Pop(availJobsHeap).(*Job)
 
@@ -103,8 +104,10 @@ func (c *customAlgo) simulate() (float64, float64) {
 		}
 	}
 
+	simulator.printFinishedJob()
 	makespan:= simulator.current
 	SLR:=calSLR(c.nodes, getCriticalPath(c.jobs), makespan)
 
 	return makespan, SLR
 }
+

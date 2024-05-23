@@ -110,10 +110,12 @@ func createStates(podCountIdx []int) [][]int {
 		replicaCount: []int{4, 6, 8},
 	}
 	for _, i := range podCountIdx {
-		for j := 0; j < len(cases.alpha); j++ {
+		j := 0
+		for k := 0; k < len(cases.replicaCount); k++ {
 			newState := make([]int, 8)
 			newState[0] = i
 			newState[1] = j
+			newState[2] = k
 			state = append(state, newState)
 		}
 	}
@@ -259,6 +261,9 @@ func comparison(state []int) {
 				continue
 			}
 			for l := 0; l < len(cases.replicaCount); l++ {
+				if isload && state[2] != l {
+					continue
+				}
 				for m := 0; m < len(cases.nodes); m++ {
 					for n := 0; n < len(cases.CCR); n++ {
 						for o := 0; o < len(cases.speedHete); o++ {
@@ -295,6 +300,7 @@ func comparison(state []int) {
 						}
 					}
 				}
+				return
 			}
 			// return
 		}
@@ -318,25 +324,32 @@ func TestTestWithCase(t *testing.T) {
 }
 
 func TestComparisonSample(t *testing.T) {
-	rand.Seed(19)
+	var randomSeed int64
+	randomSeed = 25
+
+	rand.Seed(randomSeed)
 	nodes, bw := createSampleNode()
 	jobsDag := createSampleJobDAG()
-
 	c := createCustomAlgo(jobsDag.Vectors, nodes, bw)
 	makespan, SLR := c.simulate()
 	fmt.Println("=>  ", makespan, SLR)
+	fmt.Println()
 
-	// nodes, bw = createSampleNode()
-	// jobsDag = createSampleJobDAG()
-	// m := createMPEFT(jobsDag.Vectors, nodes, bw)
-	// makespan, SLR := m.simulate()
-	// fmt.Println("=>  ", makespan, SLR)
+	rand.Seed(randomSeed)
+	nodes, bw = createSampleNode()
+	jobsDag = createSampleJobDAG()
+	m := createMPEFT(jobsDag.Vectors, nodes, bw)
+	makespan, SLR = m.simulate()
+	fmt.Println("=>  ", makespan, SLR)
+	fmt.Println()
 
-	// nodes, bw = createSampleNode()
-	// jobsDag = createSampleJobDAG()
-	// p := createIPPTS(jobsDag.Vectors, nodes, bw)
-	// makespan, SLR := p.simulate()
-	// fmt.Println("=>  ", makespan, SLR)
+	rand.Seed(randomSeed)
+	nodes, bw = createSampleNode()
+	jobsDag = createSampleJobDAG()
+	p := createIPPTS(jobsDag.Vectors, nodes, bw)
+	makespan, SLR = p.simulate()
+	fmt.Println("=>  ", makespan, SLR)
+	fmt.Println()
 }
 
 func createSampleNode() ([]*node, *bandwidth) {
@@ -347,27 +360,27 @@ func createSampleNode() ([]*node, *bandwidth) {
 
 	n1 := &node{
 		ID:            1,
-		cpu:           2 * 500,
-		mem:           2 * 512,
+		cpu:           3 * 500,
+		mem:           3 * 512,
 		allocatedCpu:  0,
 		allocatedMem:  0,
-		executionRate: 1.5,
+		executionRate: 2.5,
 	}
 	n2 := &node{
 		ID:            2,
-		cpu:           2 * 500,
-		mem:           2 * 512,
+		cpu:           3 * 500,
+		mem:           3 * 512,
 		allocatedCpu:  0,
 		allocatedMem:  0,
-		executionRate: 1.8,
+		executionRate: 3,
 	}
 	n3 := &node{
 		ID:            3,
-		cpu:           2 * 500,
-		mem:           2 * 512,
+		cpu:           3 * 500,
+		mem:           3 * 512,
 		allocatedCpu:  0,
 		allocatedMem:  0,
-		executionRate: 1.2,
+		executionRate: 2,
 	}
 	nodes = append(nodes, n1)
 	nodes = append(nodes, n2)
@@ -402,10 +415,12 @@ func createSampleJobDAG() *JobsDAG {
 	for i := 0; i < 7; i++ {
 		job := &Job{
 			ID:         i,
-			replicaNum: 2,
+			replicaNum: 4,
 			// replicaNum: 1,
 			replicaCpu: 500,
 			replicaMem: 512,
+			cpuIntensive: rand.Float64()*1.2,
+			memIntensive: rand.Float64()*1.2,
 			actionNum:  3,
 			children:   []*Job{},
 			finish:     0,
@@ -430,7 +445,7 @@ func createSampleJobDAG() *JobsDAG {
 		// Initialize final Data size
 		for _, r := range j.replicas {
 			for _, child := range j.children {
-				r.finalDataSize[child] = 1 + rand.Float64()*30
+				r.finalDataSize[child] = rand.Float64()* 20 * 3 + 10
 				// fmt.Println("from",r.ID,"to",child.ID,"final data",r.finalDataSize[child])
 			}
 		}
@@ -459,7 +474,7 @@ func createSampleReplica(j *Job) {
 
 	for i := 0; i < j.actionNum; i++ {
 
-		randExecutionTime := 1 + rand.Float64()*5
+		randExecutionTime := rand.Float64()*50 + 50
 		// if randExecutionTime<1{
 		// 	randExecutionTime+=1
 		// }
@@ -471,7 +486,7 @@ func createSampleReplica(j *Job) {
 				continue
 			}
 			for _, r := range j.replicas {
-				a.datasize[r] = 1 + rand.Float64()*5
+				a.datasize[r] = 1 + rand.Float64()* 20 + 10
 				// fmt.Println("from",pr.ID,"to",r.ID,"data",a.datasize[r])
 			}
 		}

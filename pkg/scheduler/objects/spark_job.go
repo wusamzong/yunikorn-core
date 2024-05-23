@@ -113,7 +113,6 @@ func calSLR(nodes []*node, criticalPath []*Job, makespan float64) float64{
 		return 0.0
 	}
 
-	fmt.Println(makespan, sum)
 	return makespan/sum
 }
 
@@ -179,6 +178,7 @@ func (job *Job) decideNode(nodes []*node, bw *bandwidth) bool {
 	doneReplica := []*replica{}
 	// availableTime:= map[*node]float64{}
 	for idx, replica := range job.replicas {
+		replica.node=nil
 		replica.minValue = math.MaxFloat64
 		
 		for _, node := range nodes {
@@ -190,12 +190,9 @@ func (job *Job) decideNode(nodes []*node, bw *bandwidth) bool {
 					currentJobMemUsage+=job.replicaMem
 				}
 			}
-			
-			
 			if node.cpu-node.allocatedCpu-currentJobCpuUsage < job.replicaCpu || node.mem-node.allocatedMem-currentJobMemUsage < job.replicaMem {
 				continue
 			}
-
 			var time float64
 			cpuUsage := float64(currentJobCpuUsage+node.allocatedCpu)/float64(node.cpu)
 			memUsage := float64(currentJobMemUsage+node.allocatedMem)/float64(node.mem)
@@ -275,16 +272,18 @@ func (job *Job) decideNode(nodes []*node, bw *bandwidth) bool {
 				replica.minValue = time
 				replica.node = node
 			}
-			
 		}
 		
 		if replica.node == nil {
+			job.reset()
 			return false
 		}else{
 			// fmt.Printf("Job: %d, replica: %d, select nodeID: %d\n", job.ID, idx, replica.node.ID)
 			doneReplica = append(doneReplica, replica)
 		}
+
 	}
+	
 
 	var time float64
 	// maxReceive:=0.0
@@ -323,6 +322,15 @@ func (job *Job) decideNode(nodes []*node, bw *bandwidth) bool {
 	// 	// fmt.Printf("Job: %d, replica: %d, nodeID:, %d, minValue: %.1f\n", job.ID, idx, replica.node.ID, replica.minValue)
 	// }
 	return true
+}
+
+func (j *Job) reset(){
+	for _, r := range j.replicas{
+		r.minTime = 0
+		r.minDr = 0
+		r.minValue = math.MaxFloat64
+		r.node = nil
+	}
 }
 
 func (r *replica) createAction(exeTime float64) *action {
@@ -434,7 +442,7 @@ func (job *Job) getParentReplica() []*replica {
 }
 
 // requestExecuteVolume = rand.Float64() * 50 + 50
-// executionRatio = 1+rand.Float64()*4*config.speedHeterogeneity
+// executionRatio = 1+rand.Float64()*4*config.speedHeterogeneity (平均數為2.5)
 // cpuUsage = rand.Float64
 // memUsage = rand.Float64
 // workflow.cpuIntensive = rand.Float64()*1.2
@@ -476,4 +484,16 @@ func medianOfModel()float64{
 
 	fmt.Printf("中位数是: %f\n", median)
 	return median // 3.294732	
+}
+
+func printNodesUsage(nodes []*node){
+	for _, node:= range nodes{
+		fmt.Println("NodeID: ", node.ID, ",cpu usage:",node.allocatedCpu ,"/",node.cpu)
+		fmt.Println("        ", node.ID, ",mem usage:",node.allocatedMem ,"/",node.mem)
+	}
+}
+
+func printNodeUsage(node *node){
+	fmt.Println("NodeID: ", node.ID, ",cpu usage:",node.allocatedCpu ,"/",node.cpu)
+	fmt.Println("        ", node.ID, ",mem usage:",node.allocatedMem ,"/",node.mem)
 }

@@ -145,7 +145,8 @@ func (p *ippts) simulate() (float64, float64) {
 			break
 		}
 	}
-
+	
+	simulator.printFinishedJob()
 	makespan:= simulator.current
 	SLR:=calSLR(p.nodes, getCriticalPath(p.jobs), makespan)
 
@@ -393,6 +394,7 @@ func (p *ippts) decideNode(j *Job) bool {
 	for _, r := range j.replicas {
 		min := math.MaxFloat64
 		var selectNode *node
+		selectNode = nil
 		for _, node := range p.nodes {
 			var currentJobCpuUsage int
 			var currentJobMemUsage int
@@ -409,7 +411,7 @@ func (p *ippts) decideNode(j *Job) bool {
 
 			cpuUsage := float64(currentJobCpuUsage+node.allocatedCpu)/float64(node.cpu)
 			memUsage := float64(currentJobMemUsage+node.allocatedMem)/float64(node.mem)
-			dynamicValue:=p.Lhead[r][node] * math.Pow(dynamicExecutionModel(node.executionRate, cpuUsage, memUsage, j) , 2) 
+			dynamicValue:=p.Lhead[r][node] * (1+0.5*dynamicExecutionModel(node.executionRate, cpuUsage, memUsage, j))
 			if min > dynamicValue {
 				min = dynamicValue
 				selectNode = node
