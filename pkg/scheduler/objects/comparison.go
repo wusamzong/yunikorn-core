@@ -58,8 +58,7 @@ func settingConfig(config comparisonConfig) comparisonConfig{
 
 	config.nodeCPURange = config.replicaNum*2 
 	config.nodeMemRange = config.replicaNum*2
-	
-	config.actionNum = 10
+
 	return config
 }
 
@@ -109,16 +108,17 @@ func createRandNodeByConfig(config comparisonConfig) ([]*node, *bandwidth) {
 		values: map[*node]map[*node]float64{},
 	}
 
-
+	basedExecutionTime:= 2.5
 	for i := 0; i < nodeCount; i++ {
 		resource := (rand.Intn(config.nodeCPURange)+4)
+		variation := rand.Float64()*2*config.speedHeterogeneity - config.speedHeterogeneity
 		n := &node{
 			ID:            i,
 			cpu:           resource * 500,
 			mem:           resource * 512,
 			allocatedCpu:  0,
 			allocatedMem:  0,
-			executionRate: 1+rand.Float64()*4*config.speedHeterogeneity,
+			executionRate: basedExecutionTime + variation,
 		}
 		nodes = append(nodes, n)
 	}

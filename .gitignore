@@ -11,3 +11,5 @@
 /coverage.txt
 yunikorn-state.txt
 /shellcheck
+nohup.out
+*.png

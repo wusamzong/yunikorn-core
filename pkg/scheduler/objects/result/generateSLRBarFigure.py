@@ -32,6 +32,8 @@ replicaCount = df_filtered.groupby('replicaCount')[['MPEFTSLR', 'IPPTSSLR', 'HWS
 ccr = df_filtered.groupby('CCR')[['MPEFTSLR', 'IPPTSSLR', 'HWSSLR']].mean().reset_index()
 speedHete = df_filtered.groupby('speedHete')[['MPEFTSLR', 'IPPTSSLR', 'HWSSLR']].mean().reset_index()
 nodeCount = df_filtered.groupby('nodeCount')[['MPEFTSLR', 'IPPTSSLR', 'HWSSLR']].mean().reset_index()
+tcr = df_filtered.groupby('TCR')[['MPEFTSLR', 'IPPTSSLR', 'HWSSLR']].mean().reset_index()
+actionCount = df_filtered.groupby('actionCount')[['MPEFTSLR', 'IPPTSSLR', 'HWSSLR']].mean().reset_index()
 
 hatch_patterns = ['+', '/', '.']
 colors = ['#1f77b4', '#ff7f0e', '#2ca02c']
@@ -197,3 +199,51 @@ plt.legend(handles=legend_handles)
 
 # Saving the plot to a file
 plt.savefig('./img/speedHete.png')
+
+#========================
+# Plotting the bar chart
+ax = tcr.plot(x='TCR', kind='bar', rot=0, figsize=(7, 6), color=['#1f77b4', '#ff7f0e', '#2ca02c'])
+
+# Adding titles and labels
+# plt.title('Average Makespan by tcr')
+plt.xlabel('tcr')
+plt.ylabel('Average SLR')
+
+# Applying hatch patterns to each bar
+lens=len(ax.patches)/3
+for i, bar in enumerate(ax.patches):
+    bar.set_hatch(hatch_patterns[int(i/lens)])  # Cycle through patterns
+    bar.set_edgecolor('white')
+    
+# Creating custom legend handles
+legend_handles = [mpatches.Patch(facecolor=colors[i], label=label, edgecolor='white', hatch=hatch_patterns[i % len(hatch_patterns)]) for i, label in enumerate(['MPEFT', 'IPPTS', 'HWS-BJ'])]
+
+# Adding the custom legend to the plot
+plt.legend(handles=legend_handles)
+
+# Saving the plot to a file
+plt.savefig('./img/tcr.png')
+
+#========================
+# Plotting the bar chart
+ax = actionCount.plot(x='actionCount', kind='bar', rot=0, figsize=(7, 6), color=['#1f77b4', '#ff7f0e', '#2ca02c'])
+
+# Adding titles and labels
+# plt.title('Average Makespan by actionCount')
+plt.xlabel('actionCount')
+plt.ylabel('Average SLR')
+
+# Applying hatch patterns to each bar
+lens=len(ax.patches)/3
+for i, bar in enumerate(ax.patches):
+    bar.set_hatch(hatch_patterns[int(i/lens)])  # Cycle through patterns
+    bar.set_edgecolor('white')
+    
+# Creating custom legend handles
+legend_handles = [mpatches.Patch(facecolor=colors[i], label=label, edgecolor='white', hatch=hatch_patterns[i % len(hatch_patterns)]) for i, label in enumerate(['MPEFT', 'IPPTS', 'HWS-BJ'])]
+
+# Adding the custom legend to the plot
+plt.legend(handles=legend_handles)
+
+# Saving the plot to a file
+plt.savefig('./img/actionCount.png')

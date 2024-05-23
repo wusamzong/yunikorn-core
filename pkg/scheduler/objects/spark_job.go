@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"math"
 	"sort"
+	"time"
+	"math/rand"
 )
 
 type JobsDAG struct {
@@ -86,32 +88,32 @@ func (dag *JobsDAG) getAllReplicas() []*replica{
 	return result
 }
 
-func calSLR(nodes []*node, aveBw float64, criticalPath []*replica, makespan float64) float64{
+func calSLR(nodes []*node, criticalPath []*Job, makespan float64) float64{
 	
 	sum := 0.0
-	for _, replica := range criticalPath{
+	
+	for _, job := range criticalPath{
 		min:= math.MaxFloat64
 		for _, node := range nodes{
 			replicaExecutionTime := 0.0
-			// maxActionDatasize := 0.0
-			for _, action := range replica.actions{
-				replicaExecutionTime += action.executionTime/node.executionRate
-				// for _, datasize := range action.datasize { 
-				// 	if datasize>maxActionDatasize{
-				// 		maxActionDatasize = datasize
-				// 	}
-				// }
-				// replicaExecutionTime += maxActionDatasize/aveBw
+			for _, replica := range job.replicas{
+				for _, action := range replica.actions{
+					// median of dynamic model is 3.294732
+					replicaExecutionTime += action.executionTime/(node.executionRate/3.294732)
+				}
 			}
 			if min > replicaExecutionTime{
 				min = replicaExecutionTime
 			}
+
 		}
 		sum+=min
 	}
 	if sum==0.0{
 		return 0.0
 	}
+
+	fmt.Println(makespan, sum)
 	return makespan/sum
 }
 
@@ -266,7 +268,7 @@ func (job *Job) decideNode(nodes []*node, bw *bandwidth) bool {
 			} else {
 				dr = resourceShare[1]
 			}
-			fmt.Printf("Job: %d, replica: %d, nodeID:, %d, value: %.1f\n", job.ID, idx, node.ID, time)
+			// fmt.Printf("Job: %d, replica: %d, nodeID:, %d, value: %.1f\n", job.ID, idx, node.ID, time)
 			if time < replica.minValue {
 				replica.minTime = time
 				replica.minDr = dr
@@ -279,7 +281,7 @@ func (job *Job) decideNode(nodes []*node, bw *bandwidth) bool {
 		if replica.node == nil {
 			return false
 		}else{
-			fmt.Printf("Job: %d, replica: %d, select nodeID: %d\n", job.ID, idx, replica.node.ID)
+			// fmt.Printf("Job: %d, replica: %d, select nodeID: %d\n", job.ID, idx, replica.node.ID)
 			doneReplica = append(doneReplica, replica)
 		}
 	}
@@ -382,7 +384,7 @@ func (job *Job) priority(avgExecution, avgBW float64) float64 {
 		}
 		transmissionTime += maxDataSize / avgBW
 	}
-	fmt.Println("jobID:",job.ID ,"m_{j_h}",executionTime)
+	// fmt.Println("jobID:",job.ID ,"m_{j_h}",executionTime)
 	time += (executionTime + transmissionTime)
 
 	transmissionTime = 0.0
@@ -407,7 +409,7 @@ func (job *Job) priority(avgExecution, avgBW float64) float64 {
 		}
 	}
 	job.pathPriority += maxPath
-	fmt.Printf("The path priority of Job %d is %.1f\n", job.ID, job.pathPriority)
+	// fmt.Printf("The path priority of Job %d is %.1f\n", job.ID, job.pathPriority)
 	return job.pathPriority
 }
 
@@ -431,6 +433,12 @@ func (job *Job) getParentReplica() []*replica {
 	return result
 }
 
+// requestExecuteVolume = rand.Float64() * 50 + 50
+// executionRatio = 1+rand.Float64()*4*config.speedHeterogeneity
+// cpuUsage = rand.Float64
+// memUsage = rand.Float64
+// workflow.cpuIntensive = rand.Float64()*1.2
+// workflow.memIntensive = rand.Float64()*1.2
 func dynamicExecutionModel(executionRatio float64, cpuUsage float64, memUsage float64, workflow *Job) float64{
 	alpha_1:=1.0
 	alpha_2:=0.3
@@ -440,4 +448,32 @@ func dynamicExecutionModel(executionRatio float64, cpuUsage float64, memUsage fl
 	term2 := alpha_2 * math.Pow(1+cpuUsage, workflow.cpuIntensive)
 	term3 := alpha_3 * math.Pow(1+memUsage, workflow.memIntensive) 
 	return term1/(term2+term3)
+}
+
+func medianOfModel()float64{
+	rand.Seed(time.Now().UnixNano())
+
+	speedHeterogeneity := 0.77 
+	numSamples := 100000
+
+	results := make([]float64, numSamples)
+
+	for i := 0; i < numSamples; i++ {
+		executionRatio := 1 + rand.Float64()*4*speedHeterogeneity
+		cpuUsage := rand.Float64()
+		memUsage := rand.Float64()
+		cpuIntensive := rand.Float64() * 1.2
+		memIntensive := rand.Float64() * 1.2
+		workflow := &Job{
+			cpuIntensive: cpuIntensive,
+			memIntensive: memIntensive,
+		}
+		results[i] = dynamicExecutionModel(executionRatio, cpuUsage, memUsage, workflow)
+	}
+
+	sort.Float64s(results)
+	median := results[numSamples/2]
+
+	fmt.Printf("中位数是: %f\n", median)
+	return median // 3.294732	
 }

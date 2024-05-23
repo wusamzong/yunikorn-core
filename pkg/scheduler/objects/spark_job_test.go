@@ -329,23 +329,6 @@ func createRandNode() ([]*node, *bandwidth) {
 	return nodes, bw
 }
 
-// func calcAve(nodes []*node, bw *bandwidth)(float64, float64){
-// 	sum:=0.0
-// 	count:=len(nodes)
-// 	for _, node:= range nodes{
-// 		sum+=node.executionRate
-// 	}
-// 	avgExecutionRage:=sum/float64(count)
-// 	edgeCount:=0.0
-// 	edgeSum:=0.0
-// 	for i:=0;i<len(nodes)-1;i++{
-// 		for j:=i+1;j<len(nodes);j++{
-// 			from:= nodes[i]
-// 			to:=nodes[j]
-// 			edgeCount+=1.0
-// 			edgeSum+=(*bw).values[from][to]
-// 		}
-// 	}
-// 	avgBandwidth:=edgeSum/edgeCount
-// 	return avgExecutionRage, avgBandwidth
-// }
+func TestGetMedianOfModel(t *testing.T){
+	medianOfModel()
+}

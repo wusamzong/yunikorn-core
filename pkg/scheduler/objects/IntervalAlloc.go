@@ -329,46 +329,46 @@ func nextInterval(tm *intervalTransmissionManager, am *intervalAllocManager) flo
 	return am.current
 }
 
-func getCriticalPath(job []*Job ,tm *intervalTransmissionManager, am *intervalAllocManager )[]*replica{
-	replicas:=[]*replica{}
-	for _, j := range job{
-		replicas = append(replicas, j.replicas...)
-	}
+// func getCriticalPath(job []*Job ,tm *intervalTransmissionManager, am *intervalAllocManager )[]*replica{
+// 	replicas:=[]*replica{}
+// 	for _, j := range job{
+// 		replicas = append(replicas, j.replicas...)
+// 	}
 
-	head:=[]*replica{}
-	for _, r:= range replicas{
-		if len(r.parent)==0{
-			head = append(head, r)
-		}
-	}
+// 	head:=[]*replica{}
+// 	for _, r:= range replicas{
+// 		if len(r.parent)==0{
+// 			head = append(head, r)
+// 		}
+// 	}
 
-	max:=0.0
-	criticalPath:=[]*replica{}
-	currentPath:=[]*replica{}
-	var backtracking func(float64, *replica, *intervalTransmissionManager, *intervalAllocManager)
+// 	max:=0.0
+// 	criticalPath:=[]*replica{}
+// 	currentPath:=[]*replica{}
+// 	var backtracking func(float64, *replica, *intervalTransmissionManager, *intervalAllocManager)
 
-	backtracking = func(current float64, source *replica, tm *intervalTransmissionManager, am *intervalAllocManager){
+// 	backtracking = func(current float64, source *replica, tm *intervalTransmissionManager, am *intervalAllocManager){
 		
-		for _, child := range source.children {
-			transmissionTime := tm.transmissionMapping[source][child].end - tm.transmissionMapping[source][child].start
-			currentPath = append(currentPath, child)
-			current+= transmissionTime
-			backtracking(current, child, tm, am)
-			if current>max && len(child.children)==0{
-				max=current
-				criticalPath = make([]*replica, len(currentPath))
-				copy(criticalPath, currentPath)
-			}
-			currentPath = currentPath[:len(currentPath)-1]
-			current-= transmissionTime
-		}
-	}
+// 		for _, child := range source.children {
+// 			transmissionTime := tm.transmissionMapping[source][child].end - tm.transmissionMapping[source][child].start
+// 			currentPath = append(currentPath, child)
+// 			current+= transmissionTime
+// 			backtracking(current, child, tm, am)
+// 			if current>max && len(child.children)==0{
+// 				max=current
+// 				criticalPath = make([]*replica, len(currentPath))
+// 				copy(criticalPath, currentPath)
+// 			}
+// 			currentPath = currentPath[:len(currentPath)-1]
+// 			current-= transmissionTime
+// 		}
+// 	}
 
-	for _, h := range head{
-		max=0.0
-		currentPath=[]*replica{}
-		currentPath = append(currentPath, h)
-		backtracking(0, h, tm, am)
-	}
-	return criticalPath
-}
+// 	for _, h := range head{
+// 		max=0.0
+// 		currentPath=[]*replica{}
+// 		currentPath = append(currentPath, h)
+// 		backtracking(0, h, tm, am)
+// 	}
+// 	return criticalPath
+// }

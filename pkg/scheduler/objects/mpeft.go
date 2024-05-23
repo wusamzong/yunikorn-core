@@ -199,7 +199,11 @@ func (m *mpeft) simulate() (float64, float64) {
 			break
 		}
 	}
-	return simulator.current, 0.0
+	
+	makespan:= simulator.current
+	SLR:=calSLR(m.nodes, getCriticalPath(m.jobs), makespan)
+
+	return makespan, SLR
 }
 
 func (m *mpeft) tryNode(r *replica) bool {
@@ -604,7 +608,7 @@ func (m *mpeft) decideNode(j *Job) bool {
 			
 			cpuUsage := float64(currentJobCpuUsage+node.allocatedCpu)/float64(node.cpu)
 			memUsage := float64(currentJobMemUsage+node.allocatedMem)/float64(node.mem)
-			dynamicValue:=m.MEFT[r][node] / dynamicExecutionModel(node.executionRate, cpuUsage, memUsage, j)
+			dynamicValue:=m.MEFT[r][node] * math.Pow(dynamicExecutionModel(node.executionRate, cpuUsage, memUsage, j), 2)
 			if min > dynamicValue {
 				min = dynamicValue
 				selectNode = node

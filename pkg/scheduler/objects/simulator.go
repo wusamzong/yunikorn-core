@@ -49,9 +49,10 @@ type simulateNodeUsage struct {
 }
 
 type allocJob struct {
-	Job          *Job
-	allocReplica []*allocReplica
-	state        *jobState
+	Job           *Job
+	allocatedTime float64
+	allocReplica  []*allocReplica
+	state         *jobState
 }
 
 type jobState struct {
@@ -75,8 +76,9 @@ type state struct {
 }
 
 type finishJob struct {
-	Job          *Job
-	finishedTime float64
+	Job           *Job
+	allocatedTime float64
+	finishedTime  float64
 }
 
 func createSimulator(nodes []*node, bw *bandwidth) *simulator {
@@ -110,15 +112,15 @@ func (s *simulator) addPendJob(job *Job) {
 		finalState: []*finalTransferState{},
 	}
 
-	if pendingJob.isAllParentFinish(s){
-		pendingJob.status=waitingParentJobTransfer
+	if pendingJob.isAllParentFinish(s) {
+		pendingJob.status = waitingParentJobTransfer
 		pendingJob.initFinalTransferState(s)
-		if pendingJob.isParentTransferDone(){
+		if pendingJob.isParentTransferDone() {
 			s.allocate(pendingJob.Job)
-		}else{
+		} else {
 			s.pending = append(s.pending, pendingJob)
 		}
-	}else{
+	} else {
 		s.pending = append(s.pending, pendingJob)
 	}
 }
@@ -126,8 +128,9 @@ func (s *simulator) addPendJob(job *Job) {
 func (s *simulator) allocate(job *Job) {
 	newAllocJob := []*allocJob{}
 	newAllocJob = append(newAllocJob, &allocJob{
-		Job:          job,
-		allocReplica: s.createAllocReplica(job),
+		Job:           job,
+		allocatedTime: s.current,
+		allocReplica:  s.createAllocReplica(job),
 		state: &jobState{
 			actionID: 0,
 			status:   jobExecuting,
@@ -139,10 +142,11 @@ func (s *simulator) allocate(job *Job) {
 	s.allocations = append(s.allocations, newAllocJob...)
 }
 
-func (s *simulator) addFinishedJob(job *Job){
+func (s *simulator) addFinishedJob(allocJob *allocJob) {
 	s.finished = append(s.finished, &finishJob{
-		Job: job,
-		finishedTime: s.current,
+		Job:           allocJob.Job,
+		allocatedTime: allocJob.allocatedTime,
+		finishedTime:  s.current,
 	})
 }
 
@@ -174,7 +178,7 @@ func (s *simulator) addingUsage(newAllocJob []*allocJob) {
 			s.nodesUsage[node].usedCPU += j.Job.replicaCpu
 			s.nodesUsage[node].usedMemory += j.Job.replicaMem
 			node.allocatedCpu += j.Job.replicaCpu
-			node.allocatedMem += j.Job.replicaMem 
+			node.allocatedMem += j.Job.replicaMem
 		}
 	}
 }
@@ -203,10 +207,10 @@ func (s *simulator) update() {
 
 func (s *simulator) updateTime() {
 	var minEndTime float64 = math.MaxFloat64
-	for _, j := range s.pending{
-		for _, finalState := range j.finalState{
-			if finalState.status == waitingParentJobTransfer{
-				if minEndTime > finalState.finishTime && s.current < finalState.finishTime{
+	for _, j := range s.pending {
+		for _, finalState := range j.finalState {
+			if finalState.status == waitingParentJobTransfer {
+				if minEndTime > finalState.finishTime && s.current < finalState.finishTime {
 					minEndTime = finalState.finishTime
 				}
 			}
@@ -228,10 +232,10 @@ func (s *simulator) updateTime() {
 
 func (s *simulator) updateState() {
 	for _, pendingJob := range s.pending {
-		if pendingJob.status == waitingParentJobTransfer{
+		if pendingJob.status == waitingParentJobTransfer {
 			pendingJob.updateParentTransfer(s)
 		}
-		if pendingJob.isParentTransferDone(){
+		if pendingJob.isParentTransferDone() {
 			s.releasePendJob(pendingJob)
 			s.allocate(pendingJob.Job)
 		}
@@ -239,18 +243,18 @@ func (s *simulator) updateState() {
 
 	for _, allocJob := range s.allocations {
 		allocJob.updateState(s)
-		if allocJob.state.status == jobComplete{
+		if allocJob.state.status == jobComplete {
 			s.releaseAllocJob(allocJob)
-			s.addFinishedJob(allocJob.Job)
+			s.addFinishedJob(allocJob)
 		}
 	}
 
-	for _, pendingJob := range s.pending{
-		if pendingJob.status == waitingParentJobFinish{
-			if pendingJob.isAllParentFinish(s){
-				pendingJob.status=waitingParentJobTransfer
+	for _, pendingJob := range s.pending {
+		if pendingJob.status == waitingParentJobFinish {
+			if pendingJob.isAllParentFinish(s) {
+				pendingJob.status = waitingParentJobTransfer
 				pendingJob.initFinalTransferState(s)
-				if pendingJob.isParentTransferDone(){
+				if pendingJob.isParentTransferDone() {
 					s.allocate(pendingJob.Job)
 				}
 			}
@@ -264,7 +268,7 @@ func (s *simulator) releaseAllocJob(job *allocJob) {
 		s.nodesUsage[node].usedCPU -= job.Job.replicaCpu
 		s.nodesUsage[node].usedMemory -= job.Job.replicaMem
 		node.allocatedCpu -= job.Job.replicaCpu
-		node.allocatedMem -= job.Job.replicaMem 
+		node.allocatedMem -= job.Job.replicaMem
 	}
 	for idx, j := range s.allocations {
 		if j == job {
@@ -357,7 +361,7 @@ func (r *allocReplica) updateDynamicExecutionState(current float64) {
 	if status == replicaCalculateComplete || status == replicaTransferComplete {
 		return
 	}
-	
+
 	if status == replicaCalculating {
 		period := current - r.state.pivot
 		r.state.volume -= period * r.state.executeRatio
@@ -436,37 +440,37 @@ func (pj *pendJob) initFinalTransferState(s *simulator) {
 
 				if from == to {
 					pj.finalState = append(pj.finalState, &finalTransferState{
-						status: finishParentJobTransfer,
+						status:     finishParentJobTransfer,
 						finishTime: s.current,
-						pivot: s.current,
-						volume: 0.0,
-						bandwidth: s.bw.values[from][to],
+						pivot:      s.current,
+						volume:     0.0,
+						bandwidth:  s.bw.values[from][to],
 					})
 				} else {
 					transmissionTime := datasize / s.bw.values[from][to]
 					pj.finalState = append(pj.finalState, &finalTransferState{
-						status: waitingParentJobTransfer,
-						finishTime: s.current+transmissionTime,
-						pivot: s.current,
-						volume: datasize,
-						bandwidth: s.bw.values[from][to],
-					})					
+						status:     waitingParentJobTransfer,
+						finishTime: s.current + transmissionTime,
+						pivot:      s.current,
+						volume:     datasize,
+						bandwidth:  s.bw.values[from][to],
+					})
 				}
 			}
 		}
 	}
-	if pj.isParentTransferDone(){
+	if pj.isParentTransferDone() {
 		pj.status = finishParentJobTransfer
 	}
 }
 
-func (pj *pendJob) isParentTransferDone()bool{
-	if pj.status == finishParentJobTransfer{
+func (pj *pendJob) isParentTransferDone() bool {
+	if pj.status == finishParentJobTransfer {
 		return true
 	}
 
-	for _, state := range pj.finalState{
-		if state.status==waitingParentJobTransfer{
+	for _, state := range pj.finalState {
+		if state.status == waitingParentJobTransfer {
 			return false
 		}
 	}
@@ -481,18 +485,18 @@ func (s *simulator) removePendingJob(job *pendJob) {
 	}
 }
 
-func (pj *pendJob) updateParentTransfer(s *simulator){
-	if pj.isParentTransferDone(){
-		return 
+func (pj *pendJob) updateParentTransfer(s *simulator) {
+	if pj.isParentTransferDone() {
+		return
 	}
 
-	for _, finalstate := range pj.finalState{
-		if finalstate.status==finishParentJobTransfer{
+	for _, finalstate := range pj.finalState {
+		if finalstate.status == finishParentJobTransfer {
 			continue
-		}else{
+		} else {
 			period := s.current - finalstate.pivot
 			finalstate.volume -= period * finalstate.bandwidth
-			if finalstate.volume <= 0.1{
+			if finalstate.volume <= 0.1 {
 				finalstate.status = finishParentJobTransfer
 				finalstate.volume = 0
 			}
@@ -501,51 +505,61 @@ func (pj *pendJob) updateParentTransfer(s *simulator){
 	}
 }
 
-func (pj *pendJob) isAllParentFinish(s *simulator)bool{
-	if pj.status == waitingParentJobTransfer || pj.status == finishParentJobTransfer{
+func (pj *pendJob) isAllParentFinish(s *simulator) bool {
+	if pj.status == waitingParentJobTransfer || pj.status == finishParentJobTransfer {
 		return true
 	}
-	parent:=pj.Job.parent
-	for _, parentJob := range parent{
-		if !s.isJobFinished(parentJob){
+	parent := pj.Job.parent
+	for _, parentJob := range parent {
+		if !s.isJobFinished(parentJob) {
 			return false
 		}
 	}
 	return true
 }
 
-func (s *simulator) isJobFinished(job *Job)bool{
-	for _, finishedJob := range s.finished{
-		if job==finishedJob.Job{
+func (s *simulator) isJobFinished(job *Job) bool {
+	for _, finishedJob := range s.finished {
+		if job == finishedJob.Job {
 			return true
 		}
 	}
 	return false
 }
 
-func (s *simulator) isJobAllocated(job *Job)bool{
-	for _, allocatedJob := range s.allocations{
-		if job==allocatedJob.Job{
+func (s *simulator) isJobAllocated(job *Job) bool {
+	for _, allocatedJob := range s.allocations {
+		if job == allocatedJob.Job {
 			return true
 		}
 	}
 	return false
 }
 
-func (s *simulator) isParentJobFinish(j *Job)bool{
-	for _, parentJob := range j.parent{
-		if !s.isJobFinished(parentJob){
+func (s *simulator) isParentJobFinish(j *Job) bool {
+	for _, parentJob := range j.parent {
+		if !s.isJobFinished(parentJob) {
 			return false
 		}
 	}
 	return true
 }
 
-func (s *simulator) isParentAllocated(j *Job)bool{
-	for _, parentJob := range j.parent{
-		if !s.isJobAllocated(parentJob){
+func (s *simulator) isParentAllocated(j *Job) bool {
+	for _, parentJob := range j.parent {
+		if !s.isJobAllocated(parentJob) {
 			return false
 		}
 	}
 	return true
 }
+
+func (s *simulator) getFinishedJobByJob (j *Job)*finishJob{
+	for _, finishedJob := range s.finished {
+		if finishedJob.Job == j {
+			return finishedJob
+		}
+	}
+	return nil
+}
+

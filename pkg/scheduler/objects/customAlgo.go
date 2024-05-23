@@ -20,7 +20,7 @@ func createCustomAlgo(jobs []*Job, nodes []*node, bw *bandwidth) *customAlgo {
 }
 
 func (c *customAlgo) simulate() (float64, float64) {
-
+	fmt.Println("Custom Algorithm")
 	simulator := createSimulator(c.nodes, c.bw)
 
 	aveExecRate, aveBw := calcAve(c.nodes, c.bw)
@@ -47,11 +47,11 @@ func (c *customAlgo) simulate() (float64, float64) {
 		var job *Job
 		reserveQueue := []*Job{}
 
-		fmt.Print("Queue: ")
-		for i:=0;i<availJobsHeap.Len();i++{
-			fmt.Print((*availJobsHeap).jobs[i].ID, " ")
-		}
-		fmt.Println()
+		// fmt.Print("Queue: ")
+		// for i:=0;i<availJobsHeap.Len();i++{
+		// 	fmt.Print((*availJobsHeap).jobs[i].ID, " ")
+		// }
+		// fmt.Println()
 
 		for availJobsHeap.Len() > 0 {
 
@@ -62,10 +62,8 @@ func (c *customAlgo) simulate() (float64, float64) {
 			}
 
 			done := job.decideNode(c.nodes, c.bw)
-			
-			// isAllParentTransmitted := transManager.transmittedStatus(job)
 			if done && simulator.isParentJobFinish(job) {
-				fmt.Println("JobID:", job.ID, " is allocated, Priority:", job.pathPriority)
+				// fmt.Println("JobID:", job.ID, " is allocated, Priority:", job.pathPriority)
 				simulator.addPendJob(job)
 
 				scheduledJob[job] = true
@@ -76,9 +74,9 @@ func (c *customAlgo) simulate() (float64, float64) {
 					}
 				}
 			} else {
-				if !done{
-					fmt.Println("no enough resource!")
-				}
+				// if !done{
+				// 	fmt.Println("no enough resource!")
+				// }
 				reserveQueue = append(reserveQueue, job)
 			}
 		}
@@ -104,5 +102,9 @@ func (c *customAlgo) simulate() (float64, float64) {
 			break
 		}
 	}
-	return simulator.current, 0.0
+
+	makespan:= simulator.current
+	SLR:=calSLR(c.nodes, getCriticalPath(c.jobs), makespan)
+
+	return makespan, SLR
 }

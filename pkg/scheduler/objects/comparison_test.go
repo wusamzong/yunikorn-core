@@ -9,6 +9,7 @@ import (
 	"sync"
 	"testing"
 	"time"
+	"github.com/joho/godotenv"
 )
 
 type testCase struct {
@@ -27,11 +28,17 @@ type testCase struct {
 }
 
 const (
-	path     = "/home/hsuanzong/document/01-yunikorn/yunikorn-core/pkg/scheduler/objects/result"
 	filename = "comparsion"
 )
 
 func createWriter() (*csv.Writer, *os.File) {
+	err := godotenv.Load()
+    if err != nil {
+        log.Fatal("Error loading .env file")
+    }
+
+    path := os.Getenv("storagePath")
+
 	rand.Seed(time.Now().UnixNano())
 	var filePath string
 
@@ -98,7 +105,8 @@ func createStates(podCountIdx []int) [][]int {
 	state := [][]int{}
 	cases := testCase{
 		podCount:     []int{100, 300, 500, 700, 900},
-		alpha:        []float64{0.2, 0.5, 0.8},
+		alpha:        []float64{0.2},
+		// alpha:        []float64{0.5},
 		replicaCount: []int{4, 6, 8},
 	}
 	for _, i := range podCountIdx {
@@ -117,7 +125,7 @@ func TestParallel(t *testing.T) {
 	var wg sync.WaitGroup
 	cases := testCase{
 		podCount:     []int{100, 300, 500, 700, 900},
-		alpha:        []float64{0.2, 0.5, 0.8},
+		alpha:        []float64{0.2},
 		replicaCount: []int{4, 6, 8},
 	}
 
@@ -153,7 +161,7 @@ func getState(state []int, isload bool) {
 
 	cases := testCase{
 		podCount:     []int{100, 300, 500, 700, 900},
-		alpha:        []float64{0.2, 0.5, 0.8},
+		alpha:        []float64{0.2},
 		replicaCount: []int{4, 6, 8},
 		nodes:        []int{4, 8, 16, 32},
 		CCR:          []float64{0.1, 0.5, 1, 5, 10, 20},
@@ -219,18 +227,26 @@ func comparison(state []int) {
 	defer file.Close()
 	defer w.Flush()
 
-	w.Write([]string{"podCount", "alpha", "replicaCount", "nodeCount", "CCR", "speedHete", "MPEFT", "MPEFTSLR", "IPPTS", "IPPTSSLR", "HWS", "HWSSLR"})
+	w.Write([]string{"podCount", "alpha", "replicaCount", "nodeCount", "CCR", "speedHete", "TCR", "actionCount", "MPEFT", "MPEFTSLR", "IPPTS", "IPPTSSLR", "HWS", "HWSSLR"})
 
 	cases := testCase{
-		count:        1,
+		count:        10,
 		podCount:     []int{100, 300, 500, 700, 900},
-		alpha:        []float64{0.2, 0.5, 0.8},
+		alpha:        []float64{0.2},
 		replicaCount: []int{4, 6, 8},
 		nodes:        []int{4, 8, 16, 32},
-		CCR:          []float64{0.1, 0.5, 1, 5, 10, 20},
+		CCR:          []float64{0.2, 0.5, 1, 2, 5},
 		speedHete:    []float64{0.1, 0.25, 0.5, 1.0, 2.0},
-		TCR:          []float64{0.1, 0.5, 1, 5, 10, 20}, //Transmission Cost Ratio
+		TCR:          []float64{0.2, 0.5, 1, 2, 5}, //Transmission Cost Ratio
 		actionCount:  []int{2, 4, 8, 16},
+
+		// alpha:        []float64{0.08},
+		// replicaCount: []int{6},
+		// nodes:        []int{16},
+		// CCR:          []float64{1},
+		// speedHete:    []float64{0.5},
+		// TCR:          []float64{1}, //Transmission Cost Ratio
+		// actionCount:  []int{8},
 	}
 
 	isload := true
@@ -280,7 +296,7 @@ func comparison(state []int) {
 					}
 				}
 			}
-			return
+			// return
 		}
 	}
 }
@@ -307,20 +323,20 @@ func TestComparisonSample(t *testing.T) {
 	jobsDag := createSampleJobDAG()
 
 	c := createCustomAlgo(jobsDag.Vectors, nodes, bw)
-	makespan, resourceUsage := c.simulate()
-	fmt.Println("=>  ", makespan, resourceUsage)
+	makespan, SLR := c.simulate()
+	fmt.Println("=>  ", makespan, SLR)
 
 	// nodes, bw = createSampleNode()
 	// jobsDag = createSampleJobDAG()
 	// m := createMPEFT(jobsDag.Vectors, nodes, bw)
-	// makespan, resourceUsage := m.simulate()
-	// fmt.Println("=>  ", makespan, resourceUsage)
+	// makespan, SLR := m.simulate()
+	// fmt.Println("=>  ", makespan, SLR)
 
 	// nodes, bw = createSampleNode()
 	// jobsDag = createSampleJobDAG()
 	// p := createIPPTS(jobsDag.Vectors, nodes, bw)
-	// makespan, resourceUsage := p.simulate()
-	// fmt.Println("=>  ", makespan, resourceUsage)
+	// makespan, SLR := p.simulate()
+	// fmt.Println("=>  ", makespan, SLR)
 }
 
 func createSampleNode() ([]*node, *bandwidth) {

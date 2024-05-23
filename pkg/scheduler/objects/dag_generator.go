@@ -387,3 +387,41 @@ func createRandReplicaByCCR(j *Job, ccr float64) {
 		}
 	}
 }
+
+func getCriticalPath(jobs []*Job)[]*Job{
+	max := 0.0
+	head := []*Job{}
+	for _,j:=range jobs{
+		if len(j.parent)==0{
+			head = append(head, j)
+		}
+	}
+
+	criticalPath := []*Job{}
+	currentPath := []*Job{}
+	var backtracking func(current float64, job *Job)
+
+	backtracking = func(current float64, job *Job) {
+		for _, child := range job.children{
+			executionTime := child.predictTime(1.0)
+			currentPath = append(currentPath, child)
+			current += executionTime
+			backtracking(current, child)
+			if current > max && len(child.children)==0{
+				max = current
+				criticalPath = make([]*Job, len(currentPath))
+				copy(criticalPath, currentPath)
+			}
+			currentPath = currentPath[:len(currentPath)-1]
+			current -= executionTime
+		}
+	}
+
+	for _, h := range head{
+		max=0.0
+		currentPath = []*Job{}
+		currentPath = append(currentPath, h)
+		backtracking(0, h)
+	}
+	return criticalPath
+}
