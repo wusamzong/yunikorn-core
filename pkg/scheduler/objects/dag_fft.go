@@ -132,6 +132,8 @@ func generateFFTDAG(config fftConfig) *JobsDAG {
 					replicaNum: taskNumberOfCurrentJob,
 					replicaCpu: 500,
 					replicaMem: 512,
+					cpuIntensive: rand.Float64()*1.2,
+					memIntensive: rand.Float64()*1.2,
 					actionNum:  2,
 					parent:     []*Job{},
 					children:   []*Job{},
@@ -154,6 +156,8 @@ func generateFFTDAG(config fftConfig) *JobsDAG {
 						replicaNum: 1,
 						replicaCpu: 500,
 						replicaMem: 512,
+						cpuIntensive: rand.Float64()*1.2,
+						memIntensive: rand.Float64()*1.2,
 						actionNum:  1,
 						parent:     []*Job{},
 						children:   []*Job{},
@@ -255,17 +259,26 @@ func executeFFTCase(level int, node int, ccr float64)[]string{
 			// continue
 			m := createMPEFT(jobsDag.Vectors, nodes, bw)
 			// current = append(current, fmt.Sprintf("%d", jobsDag.replicasCount))
-			makespan, _ := m.simulate()
-			current = append(current, fmt.Sprintf("%.0f", makespan))
+			metric := m.simulate()
+			current = append(current, fmt.Sprintf("%.0f", metric.makespan))
+			current = append(current, fmt.Sprintf("%.3f", metric.SLR))
+			current = append(current, fmt.Sprintf("%.3f", metric.speedup))
+			current = append(current, fmt.Sprintf("%.3f", metric.efficiency))
 		} else if algoCount == 1 {
 			// continue
 			p := createIPPTS(jobsDag.Vectors, nodes, bw)
-			makespan, _ := p.simulate()
-			current = append(current, fmt.Sprintf("%.0f", makespan))
+			metric := p.simulate()
+			current = append(current, fmt.Sprintf("%.0f", metric.makespan))
+			current = append(current, fmt.Sprintf("%.3f", metric.SLR))
+			current = append(current, fmt.Sprintf("%.3f", metric.speedup))
+			current = append(current, fmt.Sprintf("%.3f", metric.efficiency))
 		} else {
 			c := createCustomAlgo(jobsDag.Vectors, nodes, bw)
-			makespan, _ := c.simulate()
-			current = append(current, fmt.Sprintf("%.0f", makespan))
+			metric := c.simulate()
+			current = append(current, fmt.Sprintf("%.0f", metric.makespan))
+			current = append(current, fmt.Sprintf("%.3f", metric.SLR))
+			current = append(current, fmt.Sprintf("%.3f", metric.speedup))
+			current = append(current, fmt.Sprintf("%.3f", metric.efficiency))
 		}
 	}
 	return current
@@ -287,7 +300,7 @@ func createRandNodeForFFT(config fftConfig) ([]*node, *bandwidth){
 			mem:           resource * 512,
 			allocatedCpu:  0,
 			allocatedMem:  0,
-			executionRate: 1+rand.Float64(),
+			executionRate: 1.5+rand.Float64()*2,
 		}
 		nodes = append(nodes, n)
 	}

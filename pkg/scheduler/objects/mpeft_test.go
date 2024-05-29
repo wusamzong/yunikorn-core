@@ -87,6 +87,6 @@ func TestSimulateMPEFT(t *testing.T) {
 	nodes, bw := createRandNode()
 	jobsDag := createStaticJobDAG()
 	m := createMPEFT(jobsDag.Vectors, nodes, bw)
-	makespan, resourceUsage := m.simulate()
-	fmt.Println(makespan, resourceUsage)
+	metric := m.simulate()
+	fmt.Println(metric.makespan, metric.SLR)
 }

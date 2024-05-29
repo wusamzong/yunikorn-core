@@ -95,7 +95,7 @@ func (p *ippts) allocation() {
 	// p.decideNode()
 }
 
-func (p *ippts) simulate() (float64, float64) {
+func (p *ippts) simulate() metric {
 	simulator := createSimulator(p.nodes, p.bw)
 	p.allocation()
 
@@ -149,8 +149,15 @@ func (p *ippts) simulate() (float64, float64) {
 	simulator.printFinishedJob()
 	makespan:= simulator.current
 	SLR:=calSLR(p.nodes, getCriticalPath(p.jobs), makespan)
-
-	return makespan, SLR
+	speedup := calSpeedup(p.nodes, p.jobs, makespan)
+	efficiency := speedup/float64(len(p.nodes))
+	
+	return metric{
+		makespan: makespan,
+		SLR: SLR,
+		speedup: speedup,
+		efficiency: efficiency,
+	}
 }
 
 func (p *ippts) tryNode(r *replica) bool {
@@ -409,9 +416,9 @@ func (p *ippts) decideNode(j *Job) bool {
 				continue
 			}
 
-			cpuUsage := float64(currentJobCpuUsage+node.allocatedCpu)/float64(node.cpu)
-			memUsage := float64(currentJobMemUsage+node.allocatedMem)/float64(node.mem)
-			dynamicValue:=p.Lhead[r][node] * (1+0.5*dynamicExecutionModel(node.executionRate, cpuUsage, memUsage, j))
+			// cpuUsage := float64(currentJobCpuUsage+node.allocatedCpu)/float64(node.cpu)
+			// memUsage := float64(currentJobMemUsage+node.allocatedMem)/float64(node.mem)
+			dynamicValue:=p.Lhead[r][node] // * (1+0.5*dynamicExecutionModel(node.executionRate, cpuUsage, memUsage, j))
 			if min > dynamicValue {
 				min = dynamicValue
 				selectNode = node

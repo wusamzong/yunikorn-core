@@ -116,8 +116,33 @@ func calSLR(nodes []*node, criticalPath []*Job, makespan float64) float64{
 	return makespan/sum
 }
 
-func calEfficiency(){
-	
+func calSpeedup(nodes []*node, jobs []*Job, makespan float64) float64{
+	result := math.MaxFloat64
+	for _, node := range nodes{
+		sum := 0.0
+
+
+		for _, job := range jobs{
+			concurrentCPU:= node.cpu/job.replicaCpu
+			concurrentMem:= node.mem/job.replicaMem
+			concurrent := 0
+			if concurrentCPU > concurrentMem{
+				concurrent = concurrentMem
+			}else{
+				concurrent = concurrentCPU
+			}
+
+			for _, replica := range job.replicas{
+				for _, action := range replica.actions{
+					sum += action.executionTime/(node.executionRate/3.294732)/float64(concurrent)
+				}
+			}
+		}
+		if sum < result{
+			result = sum
+		}
+	}
+	return result/makespan
 }
 
 func (j *Job) createReplica() *replica {
@@ -281,7 +306,6 @@ func (job *Job) decideNode(nodes []*node, bw *bandwidth) bool {
 			// fmt.Printf("Job: %d, replica: %d, select nodeID: %d\n", job.ID, idx, replica.node.ID)
 			doneReplica = append(doneReplica, replica)
 		}
-
 	}
 	
 
@@ -316,10 +340,10 @@ func (job *Job) decideNode(nodes []*node, bw *bandwidth) bool {
 	job.makespan=time
 	// job.receiveTime=maxReceive
 	// for idx, replica := range job.replicas {
-	// 	// fmt.Println("Job", job.ID, ",replica", idx, ",nodeID:", replica.node.ID,
-	// 	// 	",minTime:", replica.minTime, ",min DR:", replica.minDr, ",minValue:", replica.minValue)
-	// 	// fmt.Printf("Job: %d, replica: %d, nodeID:, %d, minTime: %.1f, minDR: %.1f, minValue: %.1f\n", job.ID, idx, replica.node.ID, replica.minTime, replica.minDr, replica.minValue)
-	// 	// fmt.Printf("Job: %d, replica: %d, nodeID:, %d, minValue: %.1f\n", job.ID, idx, replica.node.ID, replica.minValue)
+	// 	fmt.Println("Job", job.ID, ",replica", idx, ",nodeID:", replica.node.ID,
+	// 		",minTime:", replica.minTime, ",min DR:", replica.minDr, ",minValue:", replica.minValue)
+	// 	fmt.Printf("Job: %d, replica: %d, nodeID:, %d, minTime: %.1f, minDR: %.1f, minValue: %.1f\n", job.ID, idx, replica.node.ID, replica.minTime, replica.minDr, replica.minValue)
+	// 	fmt.Printf("Job: %d, replica: %d, nodeID:, %d, minValue: %.1f\n", job.ID, idx, replica.node.ID, replica.minValue)
 	// }
 	return true
 }
@@ -392,7 +416,7 @@ func (job *Job) priority(avgExecution, avgBW float64) float64 {
 		}
 		transmissionTime += maxDataSize / avgBW
 	}
-	// fmt.Println("jobID:",job.ID ,"m_{j_h}",executionTime)
+	fmt.Println("jobID:",job.ID ,"m_{j_h}",executionTime)
 	time += (executionTime + transmissionTime)
 
 	transmissionTime = 0.0

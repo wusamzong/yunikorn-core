@@ -40,7 +40,7 @@ func TestDAGParallel(t *testing.T) {
 func TestSingleFFTDAG(t *testing.T){
 	var wg sync.WaitGroup
 	wg.Add(6)
-	go comparisonFFTDAG(6, 4, 0.1, &wg)
+	go comparisonFFTDAG(3, 4, 0.1, &wg)
 	
 	// go comparisonFFTDAG(6, 4, 0.5, &wg)
 	// go comparisonFFTDAG(6, 4, 1, &wg)
@@ -56,8 +56,10 @@ func comparisonFFTDAG(level int, node int, ccr float64, wg *sync.WaitGroup) {
 	defer w.Flush()
 	defer wg.Done()
 
-	w.Write([]string{"level", "nodeCount", "CCR", "MPEFT", "IPPTS", "HWS-BJ"})
-
+	w.Write([]string{"level", "nodeCount", "CCR", 
+	"MPEFT", "MPEFTSLR","MPEFTspeedup","MPEFTefficiency", 
+	"IPPTS", "IPPTSSLR","IPPTSspeedup","IPPTSefficiency",
+	"HWS", "HWSSLR","HWSspeedup","HWSefficiency",})
 	for count := 0; count<30; count++{
 		current := []string{}
 		current = append(current, fmt.Sprintf("%d", level))
@@ -92,8 +94,8 @@ func TestGenerateFFTDAG(t *testing.T) {
 	config.node=2
 	nodes, bw := createRandNodeForFFT(config)
 	c := createCustomAlgo(jobsDag.Vectors, nodes, bw)
-	makespan, _ := c.simulate()
-	fmt.Printf("makespan: %.0f\n", makespan)
+	metric := c.simulate()
+	fmt.Printf("makespan: %.0f\n", metric.makespan)
 }
 
 func TestCustomAlgoInFFT(t *testing.T){
@@ -103,8 +105,8 @@ func TestCustomAlgoInFFT(t *testing.T){
 	nodes, bw := createRandNodeForFFT(config)
 	jobsDag := generateFFTDAG(config)
 	c := createCustomAlgo(jobsDag.Vectors, nodes, bw)
-	makespan, _ := c.simulate()
-	fmt.Printf("%.0f\n", makespan)
+	metric := c.simulate()
+	fmt.Printf("%.0f\n", metric.makespan)
 }
 
 func TestFFTSimulate(t *testing.T) {

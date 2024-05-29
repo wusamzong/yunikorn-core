@@ -9,6 +9,7 @@ import (
 	"sync"
 	"testing"
 	"time"
+
 	"github.com/joho/godotenv"
 )
 
@@ -33,11 +34,11 @@ const (
 
 func createWriter() (*csv.Writer, *os.File) {
 	err := godotenv.Load()
-    if err != nil {
-        log.Fatal("Error loading .env file")
-    }
+	if err != nil {
+		log.Fatal("Error loading .env file")
+	}
 
-    path := os.Getenv("storagePath")
+	path := os.Getenv("storagePath")
 
 	rand.Seed(time.Now().UnixNano())
 	var filePath string
@@ -104,8 +105,8 @@ func runByIdx(podCountIdx []int) {
 func createStates(podCountIdx []int) [][]int {
 	state := [][]int{}
 	cases := testCase{
-		podCount:     []int{100, 300, 500, 700, 900},
-		alpha:        []float64{0.2},
+		podCount: []int{100, 300, 500, 700, 900},
+		alpha:    []float64{0.2},
 		// alpha:        []float64{0.5},
 		replicaCount: []int{4, 6, 8},
 	}
@@ -229,7 +230,10 @@ func comparison(state []int) {
 	defer file.Close()
 	defer w.Flush()
 
-	w.Write([]string{"podCount", "alpha", "replicaCount", "nodeCount", "CCR", "speedHete", "TCR", "actionCount", "MPEFT", "MPEFTSLR", "IPPTS", "IPPTSSLR", "HWS", "HWSSLR"})
+	w.Write([]string{"podCount", "alpha", "replicaCount", "nodeCount", "CCR", "speedHete", "TCR", "actionCount", 
+	"MPEFT", "MPEFTSLR","MPEFTspeedup","MPEFTefficiency", 
+	"IPPTS", "IPPTSSLR","IPPTSspeedup","IPPTSefficiency",
+	"HWS", "HWSSLR","HWSspeedup","HWSefficiency",})
 
 	cases := testCase{
 		count:        10,
@@ -331,25 +335,25 @@ func TestComparisonSample(t *testing.T) {
 	nodes, bw := createSampleNode()
 	jobsDag := createSampleJobDAG()
 	c := createCustomAlgo(jobsDag.Vectors, nodes, bw)
-	makespan, SLR := c.simulate()
-	fmt.Println("=>  ", makespan, SLR)
+	metric := c.simulate()
+	fmt.Println("=>  ", metric.makespan, metric.SLR)
 	fmt.Println()
 
-	rand.Seed(randomSeed)
-	nodes, bw = createSampleNode()
-	jobsDag = createSampleJobDAG()
-	m := createMPEFT(jobsDag.Vectors, nodes, bw)
-	makespan, SLR = m.simulate()
-	fmt.Println("=>  ", makespan, SLR)
-	fmt.Println()
+	// rand.Seed(randomSeed)
+	// nodes, bw = createSampleNode()
+	// jobsDag = createSampleJobDAG()
+	// m := createMPEFT(jobsDag.Vectors, nodes, bw)
+	// metric = m.simulate()
+	// fmt.Println("=>  " metric.makespan, metric.SLR)
+	// fmt.Println()
 
-	rand.Seed(randomSeed)
-	nodes, bw = createSampleNode()
-	jobsDag = createSampleJobDAG()
-	p := createIPPTS(jobsDag.Vectors, nodes, bw)
-	makespan, SLR = p.simulate()
-	fmt.Println("=>  ", makespan, SLR)
-	fmt.Println()
+	// rand.Seed(randomSeed)
+	// nodes, bw = createSampleNode()
+	// jobsDag = createSampleJobDAG()
+	// p := createIPPTS(jobsDag.Vectors, nodes, bw)
+	// metric = p.simulate()
+	// fmt.Println("=>  " metric.makespan, metric.SLR)
+	// fmt.Println()
 }
 
 func createSampleNode() ([]*node, *bandwidth) {
@@ -417,13 +421,13 @@ func createSampleJobDAG() *JobsDAG {
 			ID:         i,
 			replicaNum: 4,
 			// replicaNum: 1,
-			replicaCpu: 500,
-			replicaMem: 512,
-			cpuIntensive: rand.Float64()*1.2,
-			memIntensive: rand.Float64()*1.2,
-			actionNum:  3,
-			children:   []*Job{},
-			finish:     0,
+			replicaCpu:   500,
+			replicaMem:   512,
+			cpuIntensive: rand.Float64() * 1.2,
+			memIntensive: rand.Float64() * 1.2,
+			actionNum:    3,
+			children:     []*Job{},
+			finish:       0,
 		}
 		// fmt.Println("=> job",i)
 		createSampleReplica(job)
@@ -445,7 +449,7 @@ func createSampleJobDAG() *JobsDAG {
 		// Initialize final Data size
 		for _, r := range j.replicas {
 			for _, child := range j.children {
-				r.finalDataSize[child] = rand.Float64()* 20 * 3 + 10
+				r.finalDataSize[child] = rand.Float64()*20*3 + 10
 				// fmt.Println("from",r.ID,"to",child.ID,"final data",r.finalDataSize[child])
 			}
 		}
@@ -486,11 +490,148 @@ func createSampleReplica(j *Job) {
 				continue
 			}
 			for _, r := range j.replicas {
-				a.datasize[r] = 1 + rand.Float64()* 20 + 10
+				a.datasize[r] = 1 + rand.Float64()*20 + 10
 				// fmt.Println("from",pr.ID,"to",r.ID,"data",a.datasize[r])
 			}
 		}
 	}
 	// fmt.Println()
 
+}
+
+func TestNodeToActionExecutionTime(t *testing.T) {
+	rand.Seed(25)
+	nodes, _ := createSampleNode()
+	jobsDag := createSampleJobDAG()
+
+	table := [][]string{}
+	for _, job := range jobsDag.Vectors {
+		// create a table [][]string with columnID -> actionID, rowID -> nodeID
+
+		JobID := []string{fmt.Sprintf("Job %d", job.ID)}
+		table = append(table, JobID)
+
+		header := []string{""}
+		for _, action := range job.replicas[0].actions {
+			header = append(header, fmt.Sprintf("Action%d", action.ID))
+		}
+		table = append(table, header)
+
+		for _, node := range nodes {
+			row := []string{fmt.Sprintf("Node%d", node.ID)}
+			for _, action := range job.replicas[0].actions {
+				value := action.executionTime / node.executionRate
+				row = append(row, fmt.Sprintf("%.1f", value))
+			}
+			table = append(table, row)
+		}
+	}
+	for _, row := range table {
+		fmt.Println(row)
+	}
+	writingCSV("02_actionExecutionTime", table)
+}
+
+func TestActionDatasize(t *testing.T) {
+	rand.Seed(25)
+	// nodes, _ := createSampleNode()
+	jobsDag := createSampleJobDAG()
+
+	table := [][]string{}
+	for _, job := range jobsDag.Vectors {
+		// create a table [][]string with columnID -> actionID, rowID -> nodeID
+
+		JobID := []string{fmt.Sprintf("Job %d", job.ID)}
+		table = append(table, JobID)
+
+		for actionIdx := 0; actionIdx < len(job.replicas[0].actions)-1; actionIdx++ {
+			actionID := []string{fmt.Sprintf("Shuffle %d", actionIdx)}
+			table = append(table, actionID)
+
+			header := []string{""}
+			for _, replica := range job.replicas {
+				header = append(header, fmt.Sprintf("Replica%d", replica.ID))
+			}
+			table = append(table, header)
+			for _, fromReplica := range job.replicas {
+				row := []string{fmt.Sprintf("Replica%d", fromReplica.ID)}
+				for _, toReplica := range job.replicas {
+
+					value := fromReplica.actions[actionIdx].datasize[toReplica]
+					row = append(row, fmt.Sprintf("%.1f", value))
+
+				}
+				table = append(table, row)
+
+			}
+		}
+
+	}
+	for _, row := range table {
+		fmt.Println(row)
+	}
+
+	writingCSV("02_shuffleDataSize", table)
+}
+
+func TestFinalDatasize(t *testing.T) {
+	rand.Seed(25)
+	// nodes, _ := createSampleNode()
+	jobsDag := createSampleJobDAG()
+
+	table := [][]string{}
+	for _, FromJob := range jobsDag.Vectors {
+		// create a table [][]string with columnID -> actionID, rowID -> nodeID
+
+		JobID := []string{fmt.Sprintf("Job %d", FromJob.ID)}
+		table = append(table, JobID)
+
+		header := []string{""}
+		for _, ToJob := range jobsDag.Vectors {
+			header = append(header, fmt.Sprintf("Job%d", ToJob.ID))
+		}
+		table = append(table, header)
+
+		for _, FromReplica := range FromJob.replicas {
+			row := []string{fmt.Sprintf("Replica%d", FromReplica.ID)}
+			for _, ToJob := range jobsDag.Vectors {
+				if _, exist := FromReplica.finalDataSize[ToJob]; exist {
+					value := FromReplica.finalDataSize[ToJob]
+					row = append(row, fmt.Sprintf("%.1f", value))
+				} else {
+					row = append(row, "")
+				}
+			}
+			table = append(table, row)
+		}
+
+	}
+	for _, row := range table {
+		fmt.Println(row)
+	}
+
+	writingCSV("02_finalDataSize", table)
+}
+
+func writingCSV(filename string, table [][]string) {
+	file, err := os.Create(fmt.Sprint(filename, ".csv"))
+	if err != nil {
+		fmt.Println("Error:", err)
+		return
+	}
+	defer file.Close()
+
+	// 創建CSV writer
+	writer := csv.NewWriter(file)
+	defer writer.Flush()
+
+	// 寫入資料到CSV文件
+	for _, record := range table {
+		if err := writer.Write(record); err != nil {
+			fmt.Println("Error:", err)
+			return
+		}
+	}
+
+	fmt.Println("CSV file created successfully")
 }

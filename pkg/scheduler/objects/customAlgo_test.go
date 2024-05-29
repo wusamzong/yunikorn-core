@@ -15,8 +15,8 @@ func TestSimulateCustom(t *testing.T) {
 	jobsDag := createSampleJobDAG()
 
 	c := createCustomAlgo(jobsDag.Vectors, nodes, bw)
-	makespan, resourceUsage:=c.simulate()
-	fmt.Println(makespan, resourceUsage)
+	metric:=c.simulate()
+	fmt.Println(metric.makespan, metric.SLR)
 }
 
 func TestCustom(t *testing.T){
@@ -35,8 +35,8 @@ func TestCustom(t *testing.T){
 	jobsDag := generateRandomDAGWithConfig(config)
 	for i := 0; i < 1; i++ {
 		c := createCustomAlgo(jobsDag.Vectors, nodes, bw)
-		makespan, SLR := c.simulate()
-		fmt.Println(makespan, SLR)
+		metric:=c.simulate()
+		fmt.Println(metric.makespan, metric.SLR)
 	}
 
 }

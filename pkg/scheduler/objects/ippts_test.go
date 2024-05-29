@@ -30,8 +30,8 @@ func TestSimulateIPPTS(t *testing.T) {
 	nodes, bw := createRandNode()
 	jobsDag := createStaticJobDAG()
 	p := createIPPTS(jobsDag.Vectors, nodes, bw)
-	makespan, resourceUsage:=p.simulate()
-	fmt.Println(makespan, resourceUsage)
+	metric :=p.simulate()
+	fmt.Println(metric.makespan, metric.SLR)
 	// p.allocation()
 	// allocManager := intervalAllocManager{current: 0}
 	// sort.Slice(p.jobs, func(i, j int) bool {

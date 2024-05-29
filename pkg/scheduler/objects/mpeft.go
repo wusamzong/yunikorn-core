@@ -149,7 +149,7 @@ func (m *mpeft) allocation() {
 	// m.decideNode()
 }
 
-func (m *mpeft) simulate() (float64, float64) {
+func (m *mpeft) simulate() metric {
 	m.allocation()
 	simulator := createSimulator(m.nodes, m.bw)
 
@@ -204,8 +204,15 @@ func (m *mpeft) simulate() (float64, float64) {
 	simulator.printFinishedJob()
 	makespan:= simulator.current
 	SLR:=calSLR(m.nodes, getCriticalPath(m.jobs), makespan)
-
-	return makespan, SLR
+	speedup := calSpeedup(m.nodes, m.jobs, makespan)
+	efficiency := speedup/float64(len(m.nodes))
+	
+	return metric{
+		makespan: makespan,
+		SLR: SLR,
+		speedup: speedup,
+		efficiency: efficiency,
+	}
 }
 
 func (m *mpeft) tryNode(r *replica) bool {
@@ -609,9 +616,9 @@ func (m *mpeft) decideNode(j *Job) bool {
 				continue
 			}
 			
-			cpuUsage := float64(currentJobCpuUsage+node.allocatedCpu)/float64(node.cpu)
-			memUsage := float64(currentJobMemUsage+node.allocatedMem)/float64(node.mem)
-			dynamicValue:=m.MEFT[r][node] * (1+0.5*dynamicExecutionModel(node.executionRate, cpuUsage, memUsage, j))
+			// cpuUsage := float64(currentJobCpuUsage+node.allocatedCpu)/float64(node.cpu)
+			// memUsage := float64(currentJobMemUsage+node.allocatedMem)/float64(node.mem)
+			dynamicValue:=m.MEFT[r][node] //* (1+0.5*dynamicExecutionModel(node.executionRate, cpuUsage, memUsage, j))
 			if min > dynamicValue {
 				min = dynamicValue
 				selectNode = node

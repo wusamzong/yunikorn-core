@@ -19,7 +19,7 @@ func createCustomAlgo(jobs []*Job, nodes []*node, bw *bandwidth) *customAlgo {
 	}
 }
 
-func (c *customAlgo) simulate() (float64, float64) {
+func (c *customAlgo) simulate() metric {
 	fmt.Println("Custom Algorithm")
 	simulator := createSimulator(c.nodes, c.bw)
 
@@ -46,15 +46,14 @@ func (c *customAlgo) simulate() (float64, float64) {
 	for availJobsHeap.Len() > 0 {
 		var job *Job
 		reserveQueue := []*Job{}
-		// fmt.Println()
-		// fmt.Print("Queue: ")
-		// for i:=0;i<availJobsHeap.Len();i++{
-		// 	fmt.Print((*availJobsHeap).jobs[i].ID, " ")
-		// }
-		// fmt.Println()
+		
+		fmt.Print("Queue: ")
+		for i:=0;i<availJobsHeap.Len();i++{
+			fmt.Print((*availJobsHeap).jobs[i].ID, " ")
+		}
+		fmt.Println()
 
 		for availJobsHeap.Len() > 0 {
-			
 
 			job = heap.Pop(availJobsHeap).(*Job)
 
@@ -66,11 +65,10 @@ func (c *customAlgo) simulate() (float64, float64) {
 			if done && simulator.isParentJobFinish(job) {
 				// fmt.Println("JobID:", job.ID, " is allocated, Priority:", job.pathPriority)
 				simulator.addPendJob(job)
-
 				scheduledJob[job] = true
 				for _, child := range job.children {
 					if !scheduledJob[child] && !enqueueJob[child]{
-						heap.Push(availJobsHeap, child)
+						reserveQueue = append(reserveQueue, child)
 						enqueueJob[child]=true
 					}
 				}
@@ -107,7 +105,14 @@ func (c *customAlgo) simulate() (float64, float64) {
 	simulator.printFinishedJob()
 	makespan:= simulator.current
 	SLR:=calSLR(c.nodes, getCriticalPath(c.jobs), makespan)
-
-	return makespan, SLR
+	speedup := calSpeedup(c.nodes, c.jobs, makespan)
+	efficiency := speedup/float64(len(c.nodes))
+	
+	return metric{
+		makespan: makespan,
+		SLR: SLR,
+		speedup: speedup,
+		efficiency: efficiency,
+	}
 }
 
