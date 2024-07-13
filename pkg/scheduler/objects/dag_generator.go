@@ -171,14 +171,13 @@ func generateRandomDAGWithConfig(config comparisonConfig) *JobsDAG {
 					createdJobs[j] = true
 					createdJobs[k+nodes] = true
 					DependencyStruct[j] = append(DependencyStruct[j], k+nodes)
-					// fmt.Printf("  %d -> %d ;\n", j, k+nodes) // An Edge.
+					fmt.Printf("  %d -> %d ;\n", j, k+nodes) // An Edge.
 				}
 			}
 		}
 		nodes += newNodes // Accumulate into old node set.
 	}
 	// fmt.Println("}")
-
 	// 2. format jobId
 	tmpJobID := []int{}
 	for key := range createdJobs {
@@ -191,7 +190,6 @@ func generateRandomDAGWithConfig(config comparisonConfig) *JobsDAG {
 		formatedJobID[value] = idx
 	}
 	// fmt.Println(formatedJobID)
-
 	// 3. create jobs by dependency
 	for _, value := range formatedJobID {
 		replicaNum := config.replicaNum
@@ -215,7 +213,6 @@ func generateRandomDAGWithConfig(config comparisonConfig) *JobsDAG {
 		job.predictExecutionTime = job.predictTime(0.0)
 		jobsDAG.Vectors = append(jobsDAG.Vectors, job)
 	}
-
 	// 4. establish relationship for jobs
 	for idx, children := range DependencyStruct {
 		idx := formatedJobID[idx]
@@ -226,7 +223,6 @@ func generateRandomDAGWithConfig(config comparisonConfig) *JobsDAG {
 		}
 	}
 	jobsDAG = ChildToParent(jobsDAG)
-
 	// 5. create relationship between replicas
 	for _, j := range jobsDAG.Vectors {
 		childrenReplicas := j.getChildrenReplica()

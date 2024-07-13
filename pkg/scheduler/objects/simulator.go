@@ -154,15 +154,30 @@ func (s *simulator) addFinishedJob(allocJob *allocJob) {
 }
 
 func (s *simulator) createAllocReplica(job *Job) []*allocReplica {
+	
 	allocReplicas := []*allocReplica{}
 	for _, r := range job.replicas {
+		// fmt.Println(r.actions)
 		allocReplicas = append(allocReplicas, &allocReplica{
 			node:    r.node,
 			replica: r,
 			state:   s.createState(r),
 		})
+		r.node.replicaCount++
 	}
 	return allocReplicas
+}
+
+func (s *simulator)getReplicaCount(n *node, parentJob *Job) int {
+	result := 0
+	for _, j:=range s.allocations{
+		for _, allocReplica := range j.allocReplica{
+			if allocReplica.node == n && allocReplica.replica.job != parentJob{
+				result++
+			}
+		}
+	}
+	return result
 }
 
 func (s *simulator) createState(replica *replica) *state {
@@ -190,9 +205,9 @@ func (s *simulator) initDynamicExecutionState(newAllocJob []*allocJob) {
 			actionID := r.state.actionID
 			node := r.node
 			volume := r.replica.actions[actionID].executionTime
-			cpuUsage := float64(s.nodesUsage[node].usedCPU) / float64(node.cpu)
-			memUsage := float64(s.nodesUsage[node].usedMemory) / float64(node.mem)
-			r.state.executeRatio = dynamicExecutionModel(node.executionRate, cpuUsage, memUsage, j.Job)
+			inferenceReplicaCount:= s.getReplicaCount(node, j.Job)
+			r.state.executeRatio = dynamicExecutionModel(node.executionRate, inferenceReplicaCount)
+
 			r.state.volume = volume
 			r.state.finishTime = s.current + r.state.volume/r.state.executeRatio
 		}
@@ -270,6 +285,7 @@ func (s *simulator) releaseAllocJob(job *allocJob) {
 		s.nodesUsage[node].usedMemory -= job.Job.replicaMem
 		node.allocatedCpu -= job.Job.replicaCpu
 		node.allocatedMem -= job.Job.replicaMem
+		node.replicaCount --
 	}
 	for idx, j := range s.allocations {
 		if j == job {
@@ -346,11 +362,8 @@ func (j *allocJob) initNextActionState(s *simulator) {
 		actionID := r.state.actionID
 		node := r.node
 		volume := r.replica.actions[actionID].executionTime
-		replicaCpuRequest := j.Job.replicaCpu
-		replicaMemRequest := j.Job.replicaMem
-		cpuUsage := float64(s.nodesUsage[node].usedCPU-replicaCpuRequest) / float64(node.cpu)
-		memUsage := float64(s.nodesUsage[node].usedMemory-replicaMemRequest) / float64(node.mem)
-		r.state.executeRatio = dynamicExecutionModel(node.executionRate, cpuUsage, memUsage, j.Job)
+		inferenceReplicaCount:= s.getReplicaCount(node, j.Job)
+		r.state.executeRatio = dynamicExecutionModel(node.executionRate, inferenceReplicaCount)
 		r.state.volume = volume
 		r.state.finishTime = s.current + r.state.volume/r.state.executeRatio
 		r.state.pivot = s.current

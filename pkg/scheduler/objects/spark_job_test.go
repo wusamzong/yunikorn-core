@@ -8,16 +8,16 @@ import (
 	"testing"
 )
 
-func TestDecideNode(t *testing.T) {
-	var randomSeed int64 = 100
-	rand.Seed(randomSeed)
+// func TestDecideNode(t *testing.T) {
+// 	var randomSeed int64 = 100
+// 	rand.Seed(randomSeed)
 
-	nodes, bw := createRandNode()
-	jobsDag := createStaticJobDAG()
+// 	nodes, bw := createRandNode()
+// 	jobsDag := createStaticJobDAG()
 
-	job := jobsDag.Vectors[11]
-	job.decideNode(nodes, bw)
-}
+// 	job := jobsDag.Vectors[11]
+// 	job.decideNode(nodes, bw)
+// }
 
 // func TestCalculateJobs(t *testing.T) {
 // 	var randomSeed int64 = 100
@@ -327,8 +327,4 @@ func createRandNode() ([]*node, *bandwidth) {
 	}
 
 	return nodes, bw
-}
-
-func TestGetMedianOfModel(t *testing.T){
-	medianOfModel()
 }

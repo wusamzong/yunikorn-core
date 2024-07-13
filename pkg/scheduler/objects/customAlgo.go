@@ -47,11 +47,11 @@ func (c *customAlgo) simulate() metric {
 		var job *Job
 		reserveQueue := []*Job{}
 		
-		fmt.Print("Queue: ")
-		for i:=0;i<availJobsHeap.Len();i++{
-			fmt.Print((*availJobsHeap).jobs[i].ID, " ")
-		}
-		fmt.Println()
+		// fmt.Print("Queue: ")
+		// for i:=0;i<availJobsHeap.Len();i++{
+		// 	fmt.Print((*availJobsHeap).jobs[i].ID, " ")
+		// }
+		// fmt.Println()
 
 		for availJobsHeap.Len() > 0 {
 
@@ -61,7 +61,7 @@ func (c *customAlgo) simulate() metric {
 				continue
 			}
 
-			done := job.decideNode(c.nodes, c.bw)
+			done := job.decideNode(simulator,c.nodes, c.bw)
 			if done && simulator.isParentJobFinish(job) {
 				// fmt.Println("JobID:", job.ID, " is allocated, Priority:", job.pathPriority)
 				simulator.addPendJob(job)
@@ -102,7 +102,7 @@ func (c *customAlgo) simulate() metric {
 		}
 	}
 
-	simulator.printFinishedJob()
+	// simulator.printFinishedJob()
 	makespan:= simulator.current
 	SLR:=calSLR(c.nodes, getCriticalPath(c.jobs), makespan)
 	speedup := calSpeedup(c.nodes, c.jobs, makespan)

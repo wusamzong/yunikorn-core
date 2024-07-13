@@ -58,6 +58,7 @@ func performOperation() {
 }
 
 func settingConfig(config comparisonConfig) comparisonConfig {
+	config.alpha = 0.3
 	width := int(math.Sqrt(float64(config.podCount) / ((1.0 - config.alpha) / config.alpha)))
 	config.width = width
 	config.replicaCPURange = 4
@@ -70,6 +71,7 @@ func settingConfig(config comparisonConfig) comparisonConfig {
 }
 
 func testWithCase(seed int64, config comparisonConfig) []string {
+
 	config = settingConfig(config)
 
 	current := []string{}
@@ -78,12 +80,18 @@ func testWithCase(seed int64, config comparisonConfig) []string {
 		rand.Seed(seed)
 		nodes, bw := createRandNodeByConfig(config)
 		jobsDag := generateRandomDAGWithConfig(config)
+		fmt.Println("replica count")
 		if jobsDag.replicasCount == 0 {
 			continue
 		}
+		fmt.Println("done")
+
 
 		if algoCount == 0 {
+			
 			// continue
+			jobsWithOnlyReplica(jobsDag.Vectors)
+			jobsDag.replicasCount = len(jobsDag.Vectors)
 			m := createMPEFT(jobsDag.Vectors, nodes, bw)
 			// current = append(current, fmt.Sprintf("%d", jobsDag.replicasCount))
 			metric := m.simulate()
@@ -93,6 +101,8 @@ func testWithCase(seed int64, config comparisonConfig) []string {
 			current = append(current, fmt.Sprintf("%.3f", metric.efficiency))
 		} else if algoCount == 1 {
 			// continue
+			jobsWithOnlyReplica(jobsDag.Vectors)
+			jobsDag.replicasCount = len(jobsDag.Vectors)
 			p := createIPPTS(jobsDag.Vectors, nodes, bw)
 			metric := p.simulate()
 			current = append(current, fmt.Sprintf("%.0f", metric.makespan))
@@ -122,7 +132,7 @@ func createRandNodeByConfig(config comparisonConfig) ([]*node, *bandwidth) {
 	basedExecutionTime := 2.5
 	for i := 0; i < nodeCount; i++ {
 		resource := (rand.Intn(config.nodeCPURange) + 4)
-		variation := rand.Float64()*2*config.speedHeterogeneity - config.speedHeterogeneity
+		variation := rand.Float64()*5*config.speedHeterogeneity - config.speedHeterogeneity
 		n := &node{
 			ID:            i,
 			cpu:           resource * 500,

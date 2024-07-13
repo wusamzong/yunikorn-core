@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"math"
 	"sort"
-	"time"
-	"math/rand"
 )
 
 type JobsDAG struct {
@@ -65,6 +63,7 @@ type node struct {
 	allocatedCpu  int
 	allocatedMem  int
 	executionRate float64
+	replicaCount  int
 }
 
 type bandwidth struct {
@@ -198,7 +197,7 @@ func (replica *replica) allParentScheduled(scheduledReplica map[*replica]bool) b
 	return true
 }
 
-func (job *Job) decideNode(nodes []*node, bw *bandwidth) bool {
+func (job *Job) decideNode(s *simulator,nodes []*node, bw *bandwidth) bool {
 	job.makespan = 0
 	doneReplica := []*replica{}
 	// availableTime:= map[*node]float64{}
@@ -219,12 +218,11 @@ func (job *Job) decideNode(nodes []*node, bw *bandwidth) bool {
 				continue
 			}
 			var time float64
-			cpuUsage := float64(currentJobCpuUsage+node.allocatedCpu)/float64(node.cpu)
-			memUsage := float64(currentJobMemUsage+node.allocatedMem)/float64(node.mem)
 			// transmission time + Execution time "Inside" the Job
 			for _, action := range replica.actions {
 				var transmissionTime, executionTime float64
-				executionTime = action.executionTime/dynamicExecutionModel(node.executionRate, cpuUsage, memUsage, job)
+				inferenceReplicaCount:= s.getReplicaCount(node, job)
+				executionTime = action.executionTime/dynamicExecutionModel(node.executionRate, inferenceReplicaCount)
 				time += executionTime
 				transmissionTime = 0
 				if idx != 0 {
@@ -416,7 +414,7 @@ func (job *Job) priority(avgExecution, avgBW float64) float64 {
 		}
 		transmissionTime += maxDataSize / avgBW
 	}
-	fmt.Println("jobID:",job.ID ,"m_{j_h}",executionTime)
+	// fmt.Println("jobID:",job.ID ,"m_{j_h}",executionTime)
 	time += (executionTime + transmissionTime)
 
 	transmissionTime = 0.0
@@ -471,44 +469,23 @@ func (job *Job) getParentReplica() []*replica {
 // memUsage = rand.Float64
 // workflow.cpuIntensive = rand.Float64()*1.2
 // workflow.memIntensive = rand.Float64()*1.2
-func dynamicExecutionModel(executionRatio float64, cpuUsage float64, memUsage float64, workflow *Job) float64{
-	alpha_1:=1.0
-	alpha_2:=0.3
-	alpha_3:=0.3
-	
-	term1 := alpha_1 * executionRatio
-	term2 := alpha_2 * math.Pow(1+cpuUsage, workflow.cpuIntensive)
-	term3 := alpha_3 * math.Pow(1+memUsage, workflow.memIntensive) 
-	return term1/(term2+term3)
-}
-
-func medianOfModel()float64{
-	rand.Seed(time.Now().UnixNano())
-
-	speedHeterogeneity := 0.77 
-	numSamples := 100000
-
-	results := make([]float64, numSamples)
-
-	for i := 0; i < numSamples; i++ {
-		executionRatio := 1 + rand.Float64()*4*speedHeterogeneity
-		cpuUsage := rand.Float64()
-		memUsage := rand.Float64()
-		cpuIntensive := rand.Float64() * 1.2
-		memIntensive := rand.Float64() * 1.2
-		workflow := &Job{
-			cpuIntensive: cpuIntensive,
-			memIntensive: memIntensive,
-		}
-		results[i] = dynamicExecutionModel(executionRatio, cpuUsage, memUsage, workflow)
+func dynamicExecutionModel(executionRatio float64, allocationCount int) float64{
+	if allocationCount == 0{
+		return executionRatio
 	}
-
-	sort.Float64s(results)
-	median := results[numSamples/2]
-
-	fmt.Printf("中位数是: %f\n", median)
-	return median // 3.294732	
+	
+	InferenceEffectRatio := 1.0
+	noCpuInference := 65346*math.Log(1e-9)-4.4983
+    noMemInference := 34398*math.Log(1e-9)-47183
+    noInference := noCpuInference+noMemInference + 35347*math.Log(1e-9)+72785
+    cpuInference := 65346*math.Log(float64(allocationCount))-4.4983
+    memInference := 34398*math.Log(float64(allocationCount))-47183
+    Inference := cpuInference + memInference + 35347*math.Log(1e-9)+72785
+    InferenceRatio := (noInference - Inference)/noInference
+	return executionRatio * (1-InferenceRatio*InferenceEffectRatio)
 }
+
+
 
 func printNodesUsage(nodes []*node){
 	for _, node:= range nodes{

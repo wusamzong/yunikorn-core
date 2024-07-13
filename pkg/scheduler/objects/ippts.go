@@ -3,6 +3,7 @@ package objects
 import (
 	"math"
 	"sort"
+	// "fmt"
 )
 
 // type table map[*Job]map[*node]float64
@@ -91,7 +92,7 @@ func (p *ippts) allocation() {
 
 	p.calcEFT()
 	p.calcLhead()
-
+	
 	// p.decideNode()
 }
 
@@ -119,7 +120,7 @@ func (p *ippts) simulate() metric {
 			}
 
 			done := p.decideNode(job)
-
+			
 			if done && simulator.isParentJobFinish(job)  {
 				simulator.addPendJob(job)
 				scheduledJob[job] = true
@@ -146,7 +147,7 @@ func (p *ippts) simulate() metric {
 		}
 	}
 	
-	simulator.printFinishedJob()
+	// simulator.printFinishedJob()
 	makespan:= simulator.current
 	SLR:=calSLR(p.nodes, getCriticalPath(p.jobs), makespan)
 	speedup := calSpeedup(p.nodes, p.jobs, makespan)
@@ -307,6 +308,10 @@ func (p *ippts) sortTaskList(n *node) {
 }
 
 func (p *ippts) getEST(r *replica, n *node) {
+	if p.EST[r][n]!=-1.0{
+		return
+	}
+
 	est := 0.0
 	for _, parent := range r.parent {
 		if p.binding[parent] == nil {
@@ -368,7 +373,9 @@ func (p *ippts) calcLhead() {
 		p.Lhead[r] = map[*node]float64{}
 		for _, n := range p.nodes {
 			p.Lhead[r][n] = p.EFT[r][n] + p.LHET[r][n]
+			// fmt.Print(p.Lhead[r][n] , ", ")
 		}
+		// fmt.Println()
 	}
 
 	// for _, r := range p.replicas {
@@ -403,22 +410,14 @@ func (p *ippts) decideNode(j *Job) bool {
 		var selectNode *node
 		selectNode = nil
 		for _, node := range p.nodes {
-			var currentJobCpuUsage int
-			var currentJobMemUsage int
-			for _, r := range doneReplica {
-				if r.node == node {
-					currentJobCpuUsage += j.replicaCpu
-					currentJobMemUsage += j.replicaMem
-				}
-			}
-
-			if node.cpu-node.allocatedCpu-currentJobCpuUsage < j.replicaCpu || node.mem-node.allocatedMem-currentJobMemUsage < j.replicaMem {
-				continue
+			if node.allocatedCpu != 0 && node.allocatedMem != 0{
+				return false
 			}
 
 			// cpuUsage := float64(currentJobCpuUsage+node.allocatedCpu)/float64(node.cpu)
 			// memUsage := float64(currentJobMemUsage+node.allocatedMem)/float64(node.mem)
 			dynamicValue:=p.Lhead[r][node] // * (1+0.5*dynamicExecutionModel(node.executionRate, cpuUsage, memUsage, j))
+			
 			if min > dynamicValue {
 				min = dynamicValue
 				selectNode = node
@@ -431,6 +430,15 @@ func (p *ippts) decideNode(j *Job) bool {
 			return false
 		} else {
 			r.node = selectNode
+
+			// occupy all node && re-assign execution time
+			originalCPU := j.replicaCpu
+			originalMem := j.replicaMem
+			j.replicaCpu = selectNode.cpu
+			j.replicaMem = selectNode.mem
+			for _, a := range r.actions{
+				a.executionTime = a.executionTime * float64(originalCPU+originalMem)/float64(selectNode.cpu+selectNode.mem)  //* 0.75
+			}
 		}
 		doneReplica = append(doneReplica, r)
 	}

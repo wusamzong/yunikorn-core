@@ -8,6 +8,15 @@ import (
 	// "strconv"
 	"sync"
 	"testing"
+	"github.com/joho/godotenv"
+	"os"
+	"math/rand"
+	"time"
+	"log"
+	"encoding/csv"
+
+	// "net/http"
+	// _ "net/http/pprof"
 )
 
 type fftTestCase struct {
@@ -17,12 +26,13 @@ type fftTestCase struct {
 }
 
 func TestDAGParallel(t *testing.T) {
+	
 	var wg sync.WaitGroup
 
 	cases := fftTestCase{
-		level: []int{3, 4, 5, 6}, 
-		nodes: []int{4, 8, 16, 32},
-		CCR:   []float64{0.1, 0.5, 1, 5, 10, 20},
+		level: []int{3, 4, 5, 6, 7}, 
+		nodes: []int{4, 8, 12, 16},
+		CCR:   []float64{0.2, 0.5, 1, 2, 5},
 	}
 	numberOfCases:=len(cases.level)* len(cases.nodes)* len(cases.CCR)
 	wg.Add(numberOfCases)
@@ -38,9 +48,10 @@ func TestDAGParallel(t *testing.T) {
 }
 
 func TestSingleFFTDAG(t *testing.T){
+	
 	var wg sync.WaitGroup
-	wg.Add(6)
-	go comparisonFFTDAG(3, 4, 0.1, &wg)
+	wg.Add(1)
+	go comparisonFFTDAG(7, 2, 0.1, &wg)
 	
 	// go comparisonFFTDAG(6, 4, 0.5, &wg)
 	// go comparisonFFTDAG(6, 4, 1, &wg)
@@ -51,7 +62,7 @@ func TestSingleFFTDAG(t *testing.T){
 }
 
 func comparisonFFTDAG(level int, node int, ccr float64, wg *sync.WaitGroup) {
-	w, file := createWriter()
+	w, file := createFFTWriter()
 	defer file.Close()
 	defer w.Flush()
 	defer wg.Done()
@@ -60,7 +71,7 @@ func comparisonFFTDAG(level int, node int, ccr float64, wg *sync.WaitGroup) {
 	"MPEFT", "MPEFTSLR","MPEFTspeedup","MPEFTefficiency", 
 	"IPPTS", "IPPTSSLR","IPPTSspeedup","IPPTSefficiency",
 	"HWS", "HWSSLR","HWSspeedup","HWSefficiency",})
-	for count := 0; count<30; count++{
+	for count := 0; count<10; count++{
 		current := []string{}
 		current = append(current, fmt.Sprintf("%d", level))
 		current = append(current, fmt.Sprintf("%d", node))
@@ -69,16 +80,38 @@ func comparisonFFTDAG(level int, node int, ccr float64, wg *sync.WaitGroup) {
 		w.Write(current)
 		w.Flush()
 	}
+}
 
 
+func createFFTWriter() (*csv.Writer, *os.File) {
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatal("Error loading .env file")
+	}
+
+	path := os.Getenv("fftStoragePath")
+
+	rand.Seed(time.Now().UnixNano())
+	var filePath string
+
+	filePath = path + "/" + filename + "-" + RandSeq(7) + ".csv"
+	file, err := os.Create(filePath)
+
+	if err != nil {
+		log.Fatalln("failed to open file", err)
+	}
+	w := csv.NewWriter(file)
+	return w, file
+	// defer w.Flush()
+	// w.WriteAll(result)
 }
 
 func TestGenerateFFTDAG(t *testing.T) {
 	// CCR:   []float64{0.1, 0.5, 1, 5, 10, 20}
 
-	config := createFFTConfig(3, 100, 0.001)
+	config := createFFTConfig(7, 100, 0.001)
 	jobsDag := generateFFTDAG(config)
-	
+	fmt.Println(len(jobsDag.Vectors))
 
 	// config = createFFTConfig(2, 100, 0.5)
 	// generateFFTDAG(config)
@@ -100,7 +133,7 @@ func TestGenerateFFTDAG(t *testing.T) {
 
 func TestCustomAlgoInFFT(t *testing.T){
 	// config := createFFTConfig(6, 100, 0.1)
-	config := createFFTConfig(3, 100, 10)
+	config := createFFTConfig(3, 75, 10)
 	config.node=4
 	nodes, bw := createRandNodeForFFT(config)
 	jobsDag := generateFFTDAG(config)
@@ -110,9 +143,6 @@ func TestCustomAlgoInFFT(t *testing.T){
 }
 
 func TestFFTSimulate(t *testing.T) {
-	fft()
+	fft(2)
 }
 
-func TestFFTEdge(t *testing.T) {
-	fftEdge(4)
-}

@@ -138,6 +138,7 @@ func removeDuplicates(arr []*replica) []*replica {
 
 func (m *mpeft) allocation() {
 	fmt.Println("MPEFT allocation")
+	
 	m.calcTime()
 	m.calcEFT()
 	m.calcDCT()
@@ -157,12 +158,13 @@ func (m *mpeft) simulate() metric {
 
 	copy(queue, m.jobs)
 
+
 	sort.Slice(queue, func(i, j int) bool {
 		return m.jobRankAP[queue[i]] < m.jobRankAP[queue[j]]
 	})
 
 	scheduledJob := map[*Job]bool{}
-
+	
 	for len(queue) > 0 {
 		reserveQueue := []*Job{}
 		for len(queue) > 0 {
@@ -195,13 +197,14 @@ func (m *mpeft) simulate() metric {
 	}
 	for len(simulator.allocations)+len(simulator.pending)>0{
 		simulator.update()
+		// fmt.Println("update")
 		// printJobStatus(simulator)
 		if len(simulator.pending) ==0 && len(simulator.allocations)==0{
 			break
 		}
 	}
 	
-	simulator.printFinishedJob()
+	// simulator.printFinishedJob()
 	makespan:= simulator.current
 	SLR:=calSLR(m.nodes, getCriticalPath(m.jobs), makespan)
 	speedup := calSpeedup(m.nodes, m.jobs, makespan)
@@ -481,6 +484,10 @@ func (m *mpeft) avail(n *node) float64 {
 }
 
 func (m *mpeft) getEST(r *replica, n *node) {
+	if m.EST[r][n]!=-1.0{
+		return
+	}
+
 	est := 0.0
 	for _, parent := range r.parent {
 		if m.binding[parent] == nil {
@@ -535,7 +542,6 @@ func (m *mpeft) getEST(r *replica, n *node) {
 		m.AFT[r] = m.EFT[r][n]
 		m.binding[r] = n
 	}
-
 }
 
 func (m *mpeft) calcK() {
@@ -565,7 +571,10 @@ func (m *mpeft) calcMEFT() {
 		}
 		for _, n := range m.nodes {
 			m.MEFT[r][n] = m.EFT[r][n] + m.OCT[r][n]*m.k[r][n]
+			// fmt.Print(m.MEFT[r][n] , ", ")
 		}
+		// fmt.Println()
+		
 	}
 	// for _, r := range m.replicas {
 	// 	fmt.Printf("replica ID:%d\n", r.ID)
@@ -594,31 +603,20 @@ func (m *mpeft) calcMEFT() {
 func (m *mpeft) decideNode(j *Job) bool {
 	doneReplica := []*replica{}
 
+	min := math.MaxFloat64
+	var selectNode *node
+	selectNode = nil
 	for _, r := range j.replicas {
-		min := math.MaxFloat64
-		var selectNode *node
-		selectNode = nil
+		
 		for _, node := range m.nodes {
-			var currentJobCpuUsage int
-			var currentJobMemUsage int
-			for _, r := range doneReplica {
-				if r.node == node {
-					currentJobCpuUsage += j.replicaCpu
-					currentJobMemUsage += j.replicaMem
-				}
-			}
-
-			if node.cpu-node.allocatedCpu < currentJobCpuUsage+j.replicaCpu {
-				continue
-			}
-
-			if node.mem-node.allocatedMem < currentJobMemUsage+j.replicaMem {
-				continue
+			if node.allocatedCpu != 0 && node.allocatedMem != 0{
+				return false
 			}
 			
 			// cpuUsage := float64(currentJobCpuUsage+node.allocatedCpu)/float64(node.cpu)
 			// memUsage := float64(currentJobMemUsage+node.allocatedMem)/float64(node.mem)
 			dynamicValue:=m.MEFT[r][node] //* (1+0.5*dynamicExecutionModel(node.executionRate, cpuUsage, memUsage, j))
+
 			if min > dynamicValue {
 				min = dynamicValue
 				selectNode = node
@@ -631,6 +629,15 @@ func (m *mpeft) decideNode(j *Job) bool {
 			return false
 		} else {
 			r.node = selectNode
+
+			// occupy all node && re-assign execution time
+			originalCPU := j.replicaCpu
+			originalMem := j.replicaMem
+			j.replicaCpu = selectNode.cpu
+			j.replicaMem = selectNode.mem
+			for _, a := range r.actions{
+				a.executionTime = a.executionTime * float64(originalCPU+originalMem)/float64(selectNode.cpu+selectNode.mem) //* 0.75
+			}
 		}
 		doneReplica = append(doneReplica, r)
 	}
@@ -666,4 +673,34 @@ func (m *mpeft) decideNode(j *Job) bool {
 	}
 	j.makespan = time
 	return true
+}
+
+func jobsWithOnlyReplica(jobs []*Job){
+	for _, j:=range jobs{
+		integrateToOnlyReplica(j)
+	}
+}
+
+func integrateToOnlyReplica(j *Job){
+	j.replicaNum = 1
+
+	onlyReplica := &replica{
+		ID : 0,
+		job : j,
+		actions: []*action{},
+	}
+
+	for idx:=0;idx<j.actionNum; idx++{
+		combinedAction := &action{
+			ID: idx,
+			executionTime: 0.0,
+			datasize: map[*replica]float64{},
+		}
+		for _, r := range j.replicas{
+			combinedAction.executionTime += r.actions[idx].executionTime
+		}
+		
+		onlyReplica.actions = append(onlyReplica.actions, combinedAction)
+	}
+	j.replicas = []*replica{onlyReplica}
 }

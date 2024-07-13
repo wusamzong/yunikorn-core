@@ -87,7 +87,7 @@ func TestP5(t *testing.T) {
 
 func runByIdx(podCountIdx []int) {
 	state := createStates(podCountIdx)
-	maxGoroutines := 10
+	maxGoroutines := 30
 	guard := make(chan struct{}, maxGoroutines)
 	var wg sync.WaitGroup
 	wg.Add(len(state))
@@ -106,17 +106,13 @@ func createStates(podCountIdx []int) [][]int {
 	state := [][]int{}
 	cases := testCase{
 		podCount: []int{100, 300, 500, 700, 900},
-		alpha:    []float64{0.2},
-		// alpha:        []float64{0.5},
 		replicaCount: []int{4, 6, 8},
 	}
 	for _, i := range podCountIdx {
-		j := 0
-		for k := 0; k < len(cases.replicaCount); k++ {
+		for j := 0; j < len(cases.replicaCount); j++ {
 			newState := make([]int, 8)
 			newState[0] = i
 			newState[1] = j
-			newState[2] = k
 			state = append(state, newState)
 		}
 	}
@@ -159,86 +155,21 @@ func TestParallel(t *testing.T) {
 	wg.Wait()
 }
 
-func getState(state []int, isload bool) {
-	value := []float64{1100, 0.8, 0.4, 8, 32, 10.0, 0.01, 0.5}
-
-	cases := testCase{
-		podCount:     []int{100, 300, 500, 700, 900},
-		alpha:        []float64{0.2},
-		replicaCount: []int{4, 6, 8},
-		nodes:        []int{4, 8, 16, 32},
-		CCR:          []float64{0.1, 0.5, 1, 5, 10, 20},
-		TCR:          []float64{0.1, 0.5, 1, 5, 10, 20}, //Transmission Cost Ratio
-		actionCount:  []int{2, 4, 8, 16},
-	}
-
-	for i := 0; i < len(cases.podCount); i++ {
-		if float64(cases.podCount[i]) == value[0] {
-			fmt.Printf("%d,", i)
-			break
-		}
-	}
-	for j := 0; j < len(cases.alpha); j++ {
-		if cases.alpha[j] == value[1] {
-			fmt.Printf("%d,", j)
-			break
-		}
-	}
-	for k := 0; k < len(cases.density); k++ {
-		if cases.density[k] == value[2] {
-			fmt.Printf("%d,", k)
-			break
-		}
-	}
-	for l := 0; l < len(cases.replicaCount); l++ {
-		if float64(cases.replicaCount[l]) == value[3] {
-			fmt.Printf("%d,", l)
-			break
-		}
-	}
-	for m := 0; m < len(cases.nodes); m++ {
-		if float64(cases.nodes[m]) == value[4] {
-			fmt.Printf("%d,", m)
-			break
-		}
-	}
-	for n := 0; n < len(cases.CCR); n++ {
-		if cases.CCR[n] == value[5] {
-			fmt.Printf("%d,", n)
-			break
-		}
-	}
-	for o := 0; o < len(cases.RRC); o++ {
-		if cases.RRC[o] == value[6] {
-			fmt.Printf("%d,", o)
-			break
-		}
-	}
-	for p := 0; p < len(cases.speedHete); p++ {
-		if cases.speedHete[p] == value[7] {
-			fmt.Printf("%d", p)
-			break
-		}
-	}
-
-}
-
 // 700,0.20,0.40,6,32,1.00,0.500,0.50,32,702,
 // 700,0.2,0.6,4,16,10.0,0.05,0.5
 func comparison(state []int) {
 	w, file := createWriter()
 	defer file.Close()
 	defer w.Flush()
-
-	w.Write([]string{"podCount", "alpha", "replicaCount", "nodeCount", "CCR", "speedHete", "TCR", "actionCount", 
+	// OutputGroup = {'podCount', 'replicaCount', 'CCR', 'CTV', 'nodeCount', 'TCR', 'stageCount'}
+	w.Write([]string{"podCount", "replicaCount", "nodeCount", "CCR", "CTV", "TCR", "stageCount", 
 	"MPEFT", "MPEFTSLR","MPEFTspeedup","MPEFTefficiency", 
 	"IPPTS", "IPPTSSLR","IPPTSspeedup","IPPTSefficiency",
-	"HWS", "HWSSLR","HWSspeedup","HWSefficiency",})
+	"HWS", "HWSSLR","HWSspeedup","HWSefficiency"})
 
 	cases := testCase{
-		count:        10,
+		count:        1,
 		podCount:     []int{100, 300, 500, 700, 900},
-		alpha:        []float64{0.2},
 		replicaCount: []int{4, 6, 8},
 		nodes:        []int{4, 8, 16, 32},
 		CCR:          []float64{0.2, 0.5, 1, 2, 5},
@@ -260,53 +191,45 @@ func comparison(state []int) {
 		if isload && state[0] != i {
 			continue
 		}
-		for j := 0; j < len(cases.alpha); j++ {
-			if isload && state[1] != j {
+		for l := 0; l < len(cases.replicaCount); l++ {
+			if isload && state[1] != l {
 				continue
 			}
-			for l := 0; l < len(cases.replicaCount); l++ {
-				if isload && state[2] != l {
-					continue
-				}
-				for m := 0; m < len(cases.nodes); m++ {
-					for n := 0; n < len(cases.CCR); n++ {
-						for o := 0; o < len(cases.speedHete); o++ {
-							for p := 0; p < len(cases.TCR); p++ {
-								for r := 0; r < len(cases.actionCount); r++ {
-									var q int64
-									for q = 0; q < int64(cases.count); q++ {
-										current := []string{}
-										current = append(current, fmt.Sprintf("%d", cases.podCount[i]))
-										current = append(current, fmt.Sprintf("%.1f", cases.alpha[j]))
-										current = append(current, fmt.Sprintf("%d", cases.replicaCount[l]))
-										current = append(current, fmt.Sprintf("%d", cases.nodes[m]))
-										current = append(current, fmt.Sprintf("%.1f", cases.CCR[n]))
-										current = append(current, fmt.Sprintf("%.1f", cases.speedHete[o]))
-										current = append(current, fmt.Sprintf("%.1f", cases.TCR[p]))
-										current = append(current, fmt.Sprintf("%d", cases.actionCount[r]))
-										config := comparisonConfig{
-											podCount:           cases.podCount[i],
-											alpha:              cases.alpha[j],
-											replicaNum:         cases.replicaCount[l],
-											nodeCount:          cases.nodes[m],
-											ccr:                cases.CCR[n],
-											speedHeterogeneity: cases.speedHete[o],
-											tcr:                cases.TCR[p],
-											actionNum:          cases.actionCount[r],
-										}
-
-										current = append(current, doWithTimeout(q, config)...)
-										w.Write(current)
-										w.Flush()
+			for m := 0; m < len(cases.nodes); m++ {
+				for n := 0; n < len(cases.CCR); n++ {
+					for o := 0; o < len(cases.speedHete); o++ {
+						for p := 0; p < len(cases.TCR); p++ {
+							for r := 0; r < len(cases.actionCount); r++ {
+								var q int64
+								for q = 0; q < int64(cases.count); q++ {
+									current := []string{}
+									current = append(current, fmt.Sprintf("%d", cases.podCount[i]))
+									current = append(current, fmt.Sprintf("%d", cases.replicaCount[l]))
+									current = append(current, fmt.Sprintf("%d", cases.nodes[m]))
+									current = append(current, fmt.Sprintf("%.1f", cases.CCR[n]))
+									current = append(current, fmt.Sprintf("%.1f", cases.speedHete[o]))
+									current = append(current, fmt.Sprintf("%.1f", cases.TCR[p]))
+									current = append(current, fmt.Sprintf("%d", cases.actionCount[r]))
+									config := comparisonConfig{
+										podCount:           cases.podCount[i],
+										replicaNum:         cases.replicaCount[l],
+										nodeCount:          cases.nodes[m],
+										ccr:                cases.CCR[n],
+										speedHeterogeneity: cases.speedHete[o],  
+										tcr:                cases.TCR[p],
+										actionNum:          cases.actionCount[r],
 									}
+
+									current = append(current, doWithTimeout(q, config)...)
+									w.Write(current)
+									w.Flush()
 								}
 							}
 						}
 					}
 				}
-				return
 			}
-			// return
+			return
 		}
 	}
 }
@@ -317,13 +240,19 @@ func TestTestWithCase(t *testing.T) {
 		podCount:           100,
 		alpha:              0.2,
 		replicaNum:         4,
+		actionNum:          10,
 		nodeCount:          4,
-		ccr:                20.0,
+		ccr:                5.0,
 		speedHeterogeneity: 1.0,
 	}
 	for i := 0; i < 1; i++ {
 		result := testWithCase(seed, config)
-		fmt.Println(result)
+		for algoCount:=0; algoCount<3; algoCount++{
+			for metricCount:=0; metricCount<4; metricCount++{
+				fmt.Print(result[algoCount*4+metricCount]+", ")
+			}
+			fmt.Println()
+		}
 	}
 }
 

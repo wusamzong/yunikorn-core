@@ -25,10 +25,12 @@ func TestCustom(t *testing.T){
 		podCount:           100,
 		alpha:              0.2,
 		replicaNum:         4,
-		nodeCount:          8,
+		actionNum:          10,
+		nodeCount:          4,
 		ccr:                20.0,
 		speedHeterogeneity: 1.0,
 	}
+
 	config = settingConfig(config)
 
 	nodes, bw := createRandNodeByConfig(config)

@@ -86,6 +86,7 @@ func TestSimulateMPEFT(t *testing.T) {
 	rand.Seed(randomSeed)
 	nodes, bw := createRandNode()
 	jobsDag := createStaticJobDAG()
+	jobsWithOnlyReplica(jobsDag.Vectors)
 	m := createMPEFT(jobsDag.Vectors, nodes, bw)
 	metric := m.simulate()
 	fmt.Println(metric.makespan, metric.SLR)
