@@ -49,10 +49,10 @@ type simulateNodeUsage struct {
 }
 
 type allocJob struct {
-	Job           *Job
-	allocatedTime float64
-	allocReplica  []*allocReplica
-	state         *jobState
+	Job                   *Job
+	allocatedTime         float64
+	allocReplica          []*allocReplica
+	state                 *jobState
 }
 
 type jobState struct {
@@ -113,7 +113,6 @@ func (s *simulator) addPendJob(job *Job) {
 	}
 
 	s.reserveUsage(pendingJob)
-	
 
 	if pendingJob.isAllParentFinish(s) {
 		pendingJob.status = waitingParentJobTransfer
@@ -141,9 +140,11 @@ func (s *simulator) allocate(job *Job) {
 	})
 	s.initDynamicExecutionState(newAllocJob) // calculate before allocatie resource
 	// s.collectFinishTime(newAllocJob)
-	
+
 	s.allocations = append(s.allocations, newAllocJob...)
 }
+
+
 
 func (s *simulator) addFinishedJob(allocJob *allocJob) {
 	s.finished = append(s.finished, &finishJob{
@@ -154,7 +155,7 @@ func (s *simulator) addFinishedJob(allocJob *allocJob) {
 }
 
 func (s *simulator) createAllocReplica(job *Job) []*allocReplica {
-	
+
 	allocReplicas := []*allocReplica{}
 	for _, r := range job.replicas {
 		// fmt.Println(r.actions)
@@ -168,11 +169,11 @@ func (s *simulator) createAllocReplica(job *Job) []*allocReplica {
 	return allocReplicas
 }
 
-func (s *simulator)getReplicaCount(n *node, parentJob *Job) int {
+func (s *simulator) getReplicaCount(n *node, parentJob *Job) int {
 	result := 0
-	for _, j:=range s.allocations{
-		for _, allocReplica := range j.allocReplica{
-			if allocReplica.node == n && allocReplica.replica.job != parentJob{
+	for _, j := range s.allocations {
+		for _, allocReplica := range j.allocReplica {
+			if allocReplica.node == n && allocReplica.replica.job != parentJob {
 				result++
 			}
 		}
@@ -205,7 +206,7 @@ func (s *simulator) initDynamicExecutionState(newAllocJob []*allocJob) {
 			actionID := r.state.actionID
 			node := r.node
 			volume := r.replica.actions[actionID].executionTime
-			inferenceReplicaCount:= s.getReplicaCount(node, j.Job)
+			inferenceReplicaCount := s.getReplicaCount(node, j.Job)
 			r.state.executeRatio = dynamicExecutionModel(node.executionRate, inferenceReplicaCount)
 
 			r.state.volume = volume
@@ -285,7 +286,7 @@ func (s *simulator) releaseAllocJob(job *allocJob) {
 		s.nodesUsage[node].usedMemory -= job.Job.replicaMem
 		node.allocatedCpu -= job.Job.replicaCpu
 		node.allocatedMem -= job.Job.replicaMem
-		node.replicaCount --
+		node.replicaCount--
 	}
 	for idx, j := range s.allocations {
 		if j == job {
@@ -362,7 +363,7 @@ func (j *allocJob) initNextActionState(s *simulator) {
 		actionID := r.state.actionID
 		node := r.node
 		volume := r.replica.actions[actionID].executionTime
-		inferenceReplicaCount:= s.getReplicaCount(node, j.Job)
+		inferenceReplicaCount := s.getReplicaCount(node, j.Job)
 		r.state.executeRatio = dynamicExecutionModel(node.executionRate, inferenceReplicaCount)
 		r.state.volume = volume
 		r.state.finishTime = s.current + r.state.volume/r.state.executeRatio
@@ -568,7 +569,7 @@ func (s *simulator) isParentAllocated(j *Job) bool {
 	return true
 }
 
-func (s *simulator) getFinishedJobByJob (j *Job)*finishJob{
+func (s *simulator) getFinishedJobByJob(j *Job) *finishJob {
 	for _, finishedJob := range s.finished {
 		if finishedJob.Job == j {
 			return finishedJob
@@ -577,10 +578,10 @@ func (s *simulator) getFinishedJobByJob (j *Job)*finishJob{
 	return nil
 }
 
-func (s *simulator) printFinishedJob(){
-	for _, finishedJob := range s.finished{
-		fmt.Println("JobID: ",finishedJob.Job.ID, ",allocatedTime: ", finishedJob.allocatedTime, ",finishedTime:", finishedJob.finishedTime, ",length:", (finishedJob.finishedTime-finishedJob.allocatedTime)/10)
-		for _, r := range finishedJob.Job.replicas{
+func (s *simulator) printFinishedJob() {
+	for _, finishedJob := range s.finished {
+		fmt.Println("JobID: ", finishedJob.Job.ID, ",allocatedTime: ", finishedJob.allocatedTime, ",finishedTime:", finishedJob.finishedTime, ",length:", (finishedJob.finishedTime-finishedJob.allocatedTime)/10)
+		for _, r := range finishedJob.Job.replicas {
 			fmt.Println(" replicaID:", r.ID, ",selected Node:", r.node.ID)
 		}
 	}

@@ -463,6 +463,14 @@ func (job *Job) getParentReplica() []*replica {
 	return result
 }
 
+func (j *Job)calcSumOfExecutionTime()float64{
+	result := 0.0
+	for _, a := range j.replicas[0].actions{
+		result += a.executionTime
+	}
+	return result
+}
+
 // requestExecuteVolume = rand.Float64() * 50 + 50
 // executionRatio = 1+rand.Float64()*4*config.speedHeterogeneity (平均數為2.5)
 // cpuUsage = rand.Float64
