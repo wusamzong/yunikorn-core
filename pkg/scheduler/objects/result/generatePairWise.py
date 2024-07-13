@@ -17,12 +17,12 @@ df_list = (pd.read_csv(file) for file in csv_files)
 big_df = pd.concat(df_list, ignore_index=True)
 
 
-df_filtered = big_df[big_df['HWS-BJ'] != 0.0]
+df_filtered = big_df[big_df['HWS'] != 0.0]
 df_filtered = big_df[big_df['MPEFT'] != 0.0]
 df_filtered = big_df[big_df['IPPTS'] != 0.0]
 
 results = {}
-columns_to_compare = ['MPEFT', 'IPPTS', 'HWS-BJ']
+columns_to_compare = ['MPEFT', 'IPPTS', 'HWS']
 
 for i, col1 in enumerate(columns_to_compare):
     for col2 in columns_to_compare[i+1:]:
