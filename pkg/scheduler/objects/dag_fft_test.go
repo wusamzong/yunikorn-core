@@ -75,7 +75,7 @@ func comparisonFFTDAG(level int, node int, ccr float64, wg *sync.WaitGroup) {
 	"IPPTS", "IPPTSSLR","IPPTSspeedup","IPPTSefficiency",
 	"HWS", "HWSSLR","HWSspeedup","HWSefficiency",
 	"MACRO", "MACROSLR","MACROspeedup","MACROefficiency"})
-	for count := 0; count<30; count++{
+	for count := 0; count<1; count++{
 		current := []string{}
 		current = append(current, fmt.Sprintf("%d", level))
 		current = append(current, fmt.Sprintf("%d", node))

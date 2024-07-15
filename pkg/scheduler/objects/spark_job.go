@@ -122,18 +122,11 @@ func calSpeedup(nodes []*node, jobs []*Job, makespan float64) float64{
 
 
 		for _, job := range jobs{
-			concurrentCPU:= node.cpu/job.replicaCpu
-			concurrentMem:= node.mem/job.replicaMem
-			concurrent := 0
-			if concurrentCPU > concurrentMem{
-				concurrent = concurrentMem
-			}else{
-				concurrent = concurrentCPU
-			}
+			resourceAdjust:=float64(job.replicaCpu+job.replicaMem)/float64(node.cpu+node.mem)
 
 			for _, replica := range job.replicas{
 				for _, action := range replica.actions{
-					sum += action.executionTime/(node.executionRate/3.294732)/float64(concurrent)
+					sum += action.executionTime*resourceAdjust/node.executionRate * 3
 				}
 			}
 		}
