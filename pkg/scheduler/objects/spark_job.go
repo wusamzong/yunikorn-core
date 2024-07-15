@@ -207,17 +207,10 @@ func (job *Job) decideNode(s *simulator,nodes []*node, bw *bandwidth) bool {
 		replica.minValue = math.MaxFloat64
 		
 		for _, node := range nodes {
-			var currentJobCpuUsage int 
-			var currentJobMemUsage int	
-			for _, r := range doneReplica{
-				if r.node==node{
-					currentJobCpuUsage+=job.replicaCpu
-					currentJobMemUsage+=job.replicaMem
-				}
-			}
-			if node.cpu-node.allocatedCpu-currentJobCpuUsage < job.replicaCpu || node.mem-node.allocatedMem-currentJobMemUsage < job.replicaMem {
+			if node.allocatedCpu != 0 && node.allocatedMem != 0{
 				continue
 			}
+
 			var time float64
 			// transmission time + Execution time "Inside" the Job
 			for _, action := range replica.actions {
@@ -303,6 +296,15 @@ func (job *Job) decideNode(s *simulator,nodes []*node, bw *bandwidth) bool {
 			return false
 		}else{
 			// fmt.Printf("Job: %d, replica: %d, nodeID: %d, value %.1f\n", job.ID, idx, replica.node.ID, replica.minTime)
+
+			// occupy all node && re-assign execution time
+			originalCPU := job.replicaCpu
+			originalMem := job.replicaMem
+			job.replicaCpu = replica.node.cpu
+			job.replicaMem = replica.node.mem
+			for _, a := range replica.actions{
+				a.executionTime = a.executionTime * float64(originalCPU+originalMem)/float64(replica.node.cpu+replica.node.mem)  //* 0.75
+			}
 			doneReplica = append(doneReplica, replica)
 		}
 	}

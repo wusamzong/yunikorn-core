@@ -19,21 +19,25 @@ def generateFigure(df,type ,group, metric):
 
     plt.xlabel(group)
     if metric == "makespan":
-        plt.ylabel("Avg. Makespan")
+        if type == "std":
+            plt.ylabel("Std. makespan")
+        else:
+            plt.ylabel("Avg. makespan")
     else:
         plt.ylabel(metric)
     lens=len(ax.patches)/4
     for i, bar in enumerate(ax.patches):
         bar.set_hatch(hatch_patterns[int(i/lens)])  # Cycle through patterns
         bar.set_edgecolor('white')
-
-    legend_handles = [mpatches.Patch(facecolor=colors[i], label=label, edgecolor='white', hatch=hatch_patterns[i % len(hatch_patterns)]) for i, label in enumerate(['MPEFT', 'IPPTS', 'BL-EFT-MACRO', 'WRC'])]
-    plt.legend(handles=legend_handles)
+        
+    # legend_handles = [mpatches.Patch(facecolor=colors[i], label=label, edgecolor='white', hatch=hatch_patterns[i % len(hatch_patterns)]) for i, label in enumerate(['MPEFT', 'IPPTS', 'BL-EFT-MACRO', 'WRC'])]
+    # plt.legend(handles=legend_handles)
+    plt.legend().set_visible(False)
     if metric == '':
         metric = "makespan"
     
     
-    plt.savefig(f"./img/{type}/{metric}/{group}.png")
+    plt.savefig(f"./img/{type}/{metric}/{group}.png", bbox_inches='tight')
     plt.close()
 
 def printBigPicture(big_df):

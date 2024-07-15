@@ -193,18 +193,17 @@ func executeFFTCase(count int, level int, node int, ccr float64) []string {
 		rand.Seed(int64(count))
 		nodes, bw := createRandNodeForFFT(config)
 		jobsDag := generateFFTDAG(config)
-
+		jobsWithOnlyReplica(jobsDag.Vectors)
+		
 		var metric metric
 		if algoCount == 0 {
 			// continue
-			jobsWithOnlyReplica(jobsDag.Vectors)
 			m := createMPEFT(jobsDag.Vectors, nodes, bw)
 			metric = m.simulate()
 			current = append(current, fmt.Sprintf("%.0f", metric.makespan))
 			current = append(current, fmt.Sprintf("%.3f", metric.SLR))
 		} else if algoCount == 1 {
 			// continue
-			jobsWithOnlyReplica(jobsDag.Vectors)
 			p := createIPPTS(jobsDag.Vectors, nodes, bw)
 			metric = p.simulate()
 			current = append(current, fmt.Sprintf("%.0f", metric.makespan))
@@ -215,7 +214,6 @@ func executeFFTCase(count int, level int, node int, ccr float64) []string {
 			current = append(current, fmt.Sprintf("%.0f", metric.makespan))
 			current = append(current, fmt.Sprintf("%.3f", metric.SLR))
 		} else {
-			jobsWithOnlyReplica(jobsDag.Vectors)
 			a := createMacro(jobsDag.Vectors, nodes, bw)
 			metric = a.simulate()
 			current = append(current, fmt.Sprintf("%.0f", metric.makespan))
