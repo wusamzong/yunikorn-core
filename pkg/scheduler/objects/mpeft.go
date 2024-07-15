@@ -636,7 +636,7 @@ func (m *mpeft) decideNode(j *Job) bool {
 			j.replicaCpu = selectNode.cpu
 			j.replicaMem = selectNode.mem
 			for _, a := range r.actions{
-				a.executionTime = a.executionTime * float64(originalCPU+originalMem)/float64(selectNode.cpu+selectNode.mem) //* 0.75
+				a.executionTime = a.executionTime * float64(originalCPU+originalMem)/float64(selectNode.cpu+selectNode.mem)
 			}
 		}
 		doneReplica = append(doneReplica, r)
