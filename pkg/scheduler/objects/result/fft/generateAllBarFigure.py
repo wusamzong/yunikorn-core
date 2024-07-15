@@ -5,7 +5,7 @@ import matplotlib.patches as mpatches
 
 def generateFigure(df,type ,group, metric):
     hatch_patterns = ['++', '//', '..', 'xx']
-    ax = df.plot(x=group, kind='bar', rot=0, figsize=(7, 4), color=['#44803F', '#B4CF66', '#FFBA5F', '#FF5A33'])
+    ax = df.plot(x=group, kind='bar', rot=0, figsize=(5, 3), color=['#44803F', '#B4CF66', '#FFBA5F', '#FF5A33'])
     colors = ['#44803F', '#B4CF66', '#FFBA5F', '#FF5A33']
 
     if group == "level":
@@ -14,7 +14,10 @@ def generateFigure(df,type ,group, metric):
         plt.xlabel(group)
     
     if metric == "":
-        plt.ylabel("average makespan")
+        if type == "std":
+            plt.ylabel("Std. makespan")
+        else:
+            plt.ylabel("Avg. makespan")
     else:
         plt.ylabel(metric)
 
@@ -23,11 +26,15 @@ def generateFigure(df,type ,group, metric):
         bar.set_hatch(hatch_patterns[int(i/lens)])  # Cycle through patterns
         bar.set_edgecolor('white')
 
-    legend_handles = [mpatches.Patch(facecolor=colors[i], label=label, edgecolor='white', hatch=hatch_patterns[i % len(hatch_patterns)]) for i, label in enumerate(['MPEFT', 'IPPTS', 'MACRO', 'WRC'])]
-    plt.legend(handles=legend_handles)
+    # legend_handles = [mpatches.Patch(facecolor=colors[i], label=label, edgecolor='white', hatch=hatch_patterns[i % len(hatch_patterns)]) for i, label in enumerate(['MPEFT', 'IPPTS', 'MACRO', 'WRC'])]
+    # plt.legend(handles=legend_handles)
+
+    plt.legend().set_visible(False)
     if metric == '':
         metric = "makespan"
-    plt.savefig(f"./img/{type}/{metric}/{group}.png")
+
+    
+    plt.savefig(f"./img/{type}/{metric}/{group}.png", bbox_inches='tight')
     plt.close()
 
 def printBigPicture(big_df):
