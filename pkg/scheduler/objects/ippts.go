@@ -150,14 +150,14 @@ func (p *ippts) simulate() metric {
 	// simulator.printFinishedJob()
 	makespan:= simulator.current
 	SLR:=calSLR(p.nodes, getCriticalPath(p.jobs), makespan)
-	speedup := calSpeedup(p.nodes, p.jobs, makespan)
-	efficiency := speedup/float64(len(p.nodes))
+	// speedup := calSpeedup(p.nodes, p.jobs, makespan)
+	// efficiency := speedup/float64(len(p.nodes))
 	
 	return metric{
 		makespan: makespan,
 		SLR: SLR,
-		speedup: speedup,
-		efficiency: efficiency,
+		// speedup: speedup,
+		// efficiency: efficiency,
 	}
 }
 
@@ -411,7 +411,7 @@ func (p *ippts) decideNode(j *Job) bool {
 		selectNode = nil
 		for _, node := range p.nodes {
 			if node.allocatedCpu != 0 && node.allocatedMem != 0{
-				return false
+				continue
 			}
 
 			// cpuUsage := float64(currentJobCpuUsage+node.allocatedCpu)/float64(node.cpu)
@@ -443,49 +443,5 @@ func (p *ippts) decideNode(j *Job) bool {
 		doneReplica = append(doneReplica, r)
 	}
 
-	var time float64
-	// maxReceive:=0.0
-	for _, r := range j.replicas {
-		// for _, parent := range j.parent{
-		// 	for _, parentReplica := range parent.replicas{
-		// 		data:=parentReplica.finalDataSize[j]
-		// 		from := parentReplica.node
-		// 		to := r.node
-		// 		if from==to{
-		// 			continue
-		// 		}
-		// 		if data/p.bw.values[from][to] > maxReceive{
-		// 			maxReceive=data/p.bw.values[from][to]
-		// 		}
-		// 	}
-		// }
-
-		maxTime := 0.0
-		for _, a := range r.actions {
-			var transmissionTime, executionTime float64
-			executionTime = a.executionTime / r.node.executionRate
-			transmissionTime = 0.0
-			maxTransmissionTime := 0.0
-			for _, child := range r.children {
-				from := r.node
-				to := child.node
-				datasize := a.datasize[child]
-				if from == to {
-					transmissionTime = 0.0
-				} else {
-					transmissionTime = datasize / p.bw.values[from][to]
-				}
-				if transmissionTime > maxTransmissionTime {
-					maxTransmissionTime = transmissionTime
-				}
-			}
-			if maxTransmissionTime+executionTime > maxTime {
-				maxTime = maxTransmissionTime + executionTime
-			}
-		}
-		time += maxTime
-	}
-	j.makespan = time
-	// j.receiveTime=maxReceive
 	return true
 }

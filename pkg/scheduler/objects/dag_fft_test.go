@@ -30,9 +30,12 @@ func TestDAGParallel(t *testing.T) {
 	var wg sync.WaitGroup
 
 	cases := fftTestCase{
-		level: []int{3, 4, 5, 6, 7}, 
-		nodes: []int{4, 8, 12, 16},
-		CCR:   []float64{0.2, 0.5, 1, 2, 5},
+		level: []int{4, 5, 6, 7}, 
+		nodes: []int{8, 12, 16, 20},
+		CCR:   []float64{0.2, 0.5, 2, 5},
+		// level: []int{5}, 
+		// nodes: []int{8},
+		// CCR:   []float64{ 5},
 	}
 	numberOfCases:=len(cases.level)* len(cases.nodes)* len(cases.CCR)
 	wg.Add(numberOfCases)
@@ -51,7 +54,7 @@ func TestSingleFFTDAG(t *testing.T){
 	
 	var wg sync.WaitGroup
 	wg.Add(1)
-	go comparisonFFTDAG(7, 2, 0.1, &wg)
+	go comparisonFFTDAG(7, 8, 1, &wg)
 	
 	// go comparisonFFTDAG(6, 4, 0.5, &wg)
 	// go comparisonFFTDAG(6, 4, 1, &wg)
@@ -70,13 +73,14 @@ func comparisonFFTDAG(level int, node int, ccr float64, wg *sync.WaitGroup) {
 	w.Write([]string{"level", "nodeCount", "CCR", 
 	"MPEFT", "MPEFTSLR","MPEFTspeedup","MPEFTefficiency", 
 	"IPPTS", "IPPTSSLR","IPPTSspeedup","IPPTSefficiency",
-	"HWS", "HWSSLR","HWSspeedup","HWSefficiency",})
-	for count := 0; count<10; count++{
+	"HWS", "HWSSLR","HWSspeedup","HWSefficiency",
+	"MACRO", "MACROSLR","MACROspeedup","MACROefficiency"})
+	for count := 0; count<1; count++{
 		current := []string{}
 		current = append(current, fmt.Sprintf("%d", level))
 		current = append(current, fmt.Sprintf("%d", node))
 		current = append(current, fmt.Sprintf("%.1f", ccr))
-		current = append(current, executeFFTCase(level, node, ccr)...)
+		current = append(current, executeFFTCase(count, level, node, ccr)...)
 		w.Write(current)
 		w.Flush()
 	}
@@ -109,7 +113,7 @@ func createFFTWriter() (*csv.Writer, *os.File) {
 func TestGenerateFFTDAG(t *testing.T) {
 	// CCR:   []float64{0.1, 0.5, 1, 5, 10, 20}
 
-	config := createFFTConfig(7, 100, 0.001)
+	config := createFFTConfig(7, 1000, 10)
 	jobsDag := generateFFTDAG(config)
 	fmt.Println(len(jobsDag.Vectors))
 
@@ -124,11 +128,13 @@ func TestGenerateFFTDAG(t *testing.T) {
 	// config = createFFTConfig(3, 100, 20)
 	// generateFFTDAG(config)
 
-	config.node=2
+	config.node=4
 	nodes, bw := createRandNodeForFFT(config)
 	c := createCustomAlgo(jobsDag.Vectors, nodes, bw)
 	metric := c.simulate()
-	fmt.Printf("makespan: %.0f\n", metric.makespan)
+	speedup := calSpeedup(nodes, jobsDag.Vectors, metric.makespan)
+	efficiency := speedup/float64(len(nodes))
+	fmt.Printf("makespan: %.0f, speedup: %.3f, efficiency: %.3f\n", metric.makespan, speedup, efficiency)
 }
 
 func TestCustomAlgoInFFT(t *testing.T){

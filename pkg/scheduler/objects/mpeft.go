@@ -207,14 +207,14 @@ func (m *mpeft) simulate() metric {
 	// simulator.printFinishedJob()
 	makespan:= simulator.current
 	SLR:=calSLR(m.nodes, getCriticalPath(m.jobs), makespan)
-	speedup := calSpeedup(m.nodes, m.jobs, makespan)
-	efficiency := speedup/float64(len(m.nodes))
+	// speedup := calSpeedup(m.nodes, m.jobs, makespan)
+	// efficiency := speedup/float64(len(m.nodes))
 	
 	return metric{
 		makespan: makespan,
 		SLR: SLR,
-		speedup: speedup,
-		efficiency: efficiency,
+		// speedup: speedup,
+		// efficiency: efficiency,
 	}
 }
 
@@ -610,7 +610,7 @@ func (m *mpeft) decideNode(j *Job) bool {
 		
 		for _, node := range m.nodes {
 			if node.allocatedCpu != 0 && node.allocatedMem != 0{
-				return false
+				continue
 			}
 			
 			// cpuUsage := float64(currentJobCpuUsage+node.allocatedCpu)/float64(node.cpu)
@@ -642,52 +642,36 @@ func (m *mpeft) decideNode(j *Job) bool {
 		doneReplica = append(doneReplica, r)
 	}
 
-	var time float64
-	for _, r := range j.replicas {
-
-		maxTime := 0.0
-		for _, a := range r.actions {
-			var transmissionTime, executionTime float64
-			executionTime = a.executionTime / r.node.executionRate
-			
-			transmissionTime = 0.0
-			maxTransmissionTime := 0.0
-			for _, child := range r.children {
-				from := r.node
-				to := child.node
-				datasize := a.datasize[child]
-				if from == to {
-					transmissionTime = 0.0
-				} else {
-					transmissionTime = datasize / m.bw.values[from][to]
-				}
-				if transmissionTime > maxTransmissionTime {
-					maxTransmissionTime = transmissionTime
-				}
-			}
-			if maxTransmissionTime+executionTime > maxTime {
-				maxTime = maxTransmissionTime + executionTime
-			}
-		}
-		time += maxTime
-	}
-	j.makespan = time
 	return true
 }
 
 func jobsWithOnlyReplica(jobs []*Job){
 	for _, j:=range jobs{
+		
 		integrateToOnlyReplica(j)
+		
 	}
 }
 
 func integrateToOnlyReplica(j *Job){
+	alpha := 1.0
+	if len(j.replicas)==1{
+		alpha = 0.7
+	}
+	
 	j.replicaNum = 1
 
 	onlyReplica := &replica{
 		ID : 0,
 		job : j,
 		actions: []*action{},
+		finalDataSize: map[*Job]float64{},
+	}
+	
+	for _, r := range j.replicas{
+		for _, child := range j.children{
+			onlyReplica.finalDataSize[child] += (r.finalDataSize[child])*alpha
+		}		
 	}
 
 	for idx:=0;idx<j.actionNum; idx++{
@@ -697,10 +681,11 @@ func integrateToOnlyReplica(j *Job){
 			datasize: map[*replica]float64{},
 		}
 		for _, r := range j.replicas{
-			combinedAction.executionTime += r.actions[idx].executionTime
+			combinedAction.executionTime += (r.actions[idx].executionTime)*alpha
 		}
 		
 		onlyReplica.actions = append(onlyReplica.actions, combinedAction)
 	}
 	j.replicas = []*replica{onlyReplica}
+	
 }

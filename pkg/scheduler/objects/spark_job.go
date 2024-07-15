@@ -141,6 +141,7 @@ func calSpeedup(nodes []*node, jobs []*Job, makespan float64) float64{
 			result = sum
 		}
 	}
+	fmt.Println(result, makespan, result/makespan)
 	return result/makespan
 }
 
@@ -301,7 +302,7 @@ func (job *Job) decideNode(s *simulator,nodes []*node, bw *bandwidth) bool {
 			job.reset()
 			return false
 		}else{
-			// fmt.Printf("Job: %d, replica: %d, select nodeID: %d\n", job.ID, idx, replica.node.ID)
+			// fmt.Printf("Job: %d, replica: %d, nodeID: %d, value %.1f\n", job.ID, idx, replica.node.ID, replica.minTime)
 			doneReplica = append(doneReplica, replica)
 		}
 	}
@@ -485,15 +486,13 @@ func dynamicExecutionModel(executionRatio float64, allocationCount int) float64{
 	InferenceEffectRatio := 1.0
 	noCpuInference := 65346*math.Log(1e-9)-4.4983
     noMemInference := 34398*math.Log(1e-9)-47183
-    noInference := noCpuInference+noMemInference + 35347*math.Log(1e-9)+72785
+    noInference := (noCpuInference+noMemInference + 35347*math.Log(1e-9)+72785) * InferenceEffectRatio
     cpuInference := 65346*math.Log(float64(allocationCount))-4.4983
     memInference := 34398*math.Log(float64(allocationCount))-47183
-    Inference := cpuInference + memInference + 35347*math.Log(1e-9)+72785
+    Inference := (cpuInference + memInference + 35347*math.Log(1e-9)+72785) 
     InferenceRatio := (noInference - Inference)/noInference
-	return executionRatio * (1-InferenceRatio*InferenceEffectRatio)
+	return executionRatio * (1-InferenceRatio)
 }
-
-
 
 func printNodesUsage(nodes []*node){
 	for _, node:= range nodes{

@@ -105,8 +105,8 @@ func runByIdx(podCountIdx []int) {
 func createStates(podCountIdx []int) [][]int {
 	state := [][]int{}
 	cases := testCase{
-		podCount: []int{100, 300, 500, 700, 900},
-		replicaCount: []int{4, 6, 8},
+		podCount: []int{300, 400, 500, 600, 700},
+		replicaCount: []int{6, 8, 10},
 	}
 	for _, i := range podCountIdx {
 		for j := 0; j < len(cases.replicaCount); j++ {
@@ -125,7 +125,7 @@ func TestParallel(t *testing.T) {
 	cases := testCase{
 		podCount:     []int{100, 300, 500, 700, 900},
 		alpha:        []float64{0.2},
-		replicaCount: []int{4, 6, 8},
+		replicaCount: []int{6, 8, 10},
 	}
 
 	for i := 0; i < len(cases.podCount); i++ {
@@ -161,27 +161,32 @@ func comparison(state []int) {
 	w, file := createWriter()
 	defer file.Close()
 	defer w.Flush()
-	// OutputGroup = {'podCount', 'replicaCount', 'CCR', 'CTV', 'nodeCount', 'TCR', 'stageCount'}
+	
 	w.Write([]string{"podCount", "replicaCount", "nodeCount", "CCR", "CTV", "TCR", "stageCount", 
 	"MPEFT", "MPEFTSLR","MPEFTspeedup","MPEFTefficiency", 
 	"IPPTS", "IPPTSSLR","IPPTSspeedup","IPPTSefficiency",
-	"HWS", "HWSSLR","HWSspeedup","HWSefficiency"})
+	"HWS", "HWSSLR","HWSspeedup","HWSefficiency",
+	"MACRO", "MACROSLR","MACROspeedup","MACROefficiency"})
+
+	// only test dynamic
+	// w.Write([]string{"podCount", "replicaCount", "nodeCount", "CCR", "CTV", "TCR", "stageCount", 
+	// "HWS", })
 
 	cases := testCase{
-		count:        1,
-		podCount:     []int{100, 300, 500, 700, 900},
-		replicaCount: []int{4, 6, 8},
-		nodes:        []int{4, 8, 16, 32},
-		CCR:          []float64{0.2, 0.5, 1, 2, 5},
-		speedHete:    []float64{0.1, 0.25, 0.5, 1.0, 2.0},
-		TCR:          []float64{0.2, 0.5, 1, 2, 5}, //Transmission Cost Ratio
-		actionCount:  []int{2, 4, 8, 16},
+		count:        10,
+		podCount:     []int{300, 400, 500, 600, 700},
+		replicaCount: []int{6, 8, 10},
+		nodes:        []int{20, 24, 28, 32},
+		CCR:          []float64{0.2, 0.5, 2, 5},
+		speedHete:    []float64{0.25, 0.5, 1.0, 2.0},
+		TCR:          []float64{0.2, 0.5, 2, 5}, //Transmission Cost Ratio
+		actionCount:  []int{2, 4, 8, 10},
 
 		// alpha:        []float64{0.08},
 		// replicaCount: []int{6},
 		// nodes:        []int{16},
 		// CCR:          []float64{1},
-		// speedHete:    []float64{0.5},
+		// speedHete:    []float64{1.0},
 		// TCR:          []float64{1}, //Transmission Cost Ratio
 		// actionCount:  []int{8},
 	}
@@ -235,19 +240,20 @@ func comparison(state []int) {
 }
 
 func TestTestWithCase(t *testing.T) {
-	var seed int64 = 1
+	var seed int64 = 4
 	config := comparisonConfig{
-		podCount:           100,
-		alpha:              0.2,
+		podCount:           40,
+		alpha:              0.5,
 		replicaNum:         4,
-		actionNum:          10,
-		nodeCount:          4,
-		ccr:                5.0,
+		actionNum:          4,
+		nodeCount:          3,
+		ccr:                1.0,
 		speedHeterogeneity: 1.0,
+		tcr:                1.0,
 	}
 	for i := 0; i < 1; i++ {
 		result := testWithCase(seed, config)
-		for algoCount:=0; algoCount<3; algoCount++{
+		for algoCount:=0; algoCount<4; algoCount++{
 			for metricCount:=0; metricCount<4; metricCount++{
 				fmt.Print(result[algoCount*4+metricCount]+", ")
 			}
@@ -258,7 +264,7 @@ func TestTestWithCase(t *testing.T) {
 
 func TestComparisonSample(t *testing.T) {
 	var randomSeed int64
-	randomSeed = 25
+	randomSeed = 31
 
 	rand.Seed(randomSeed)
 	nodes, bw := createSampleNode()
@@ -271,17 +277,28 @@ func TestComparisonSample(t *testing.T) {
 	// rand.Seed(randomSeed)
 	// nodes, bw = createSampleNode()
 	// jobsDag = createSampleJobDAG()
+	// jobsWithOnlyReplica(jobsDag.Vectors)
 	// m := createMPEFT(jobsDag.Vectors, nodes, bw)
 	// metric = m.simulate()
-	// fmt.Println("=>  " metric.makespan, metric.SLR)
+	// fmt.Println("=>  ", metric.makespan, metric.SLR)
 	// fmt.Println()
 
 	// rand.Seed(randomSeed)
 	// nodes, bw = createSampleNode()
 	// jobsDag = createSampleJobDAG()
+	// jobsWithOnlyReplica(jobsDag.Vectors)
+	// a := createMacro(jobsDag.Vectors, nodes, bw)
+	// metric = a.simulate()
+	// fmt.Println("=>  ", metric.makespan, metric.SLR)
+	// fmt.Println()
+
+	// rand.Seed(randomSeed)
+	// nodes, bw = createSampleNode()
+	// jobsDag = createSampleJobDAG()
+	// jobsWithOnlyReplica(jobsDag.Vectors)
 	// p := createIPPTS(jobsDag.Vectors, nodes, bw)
 	// metric = p.simulate()
-	// fmt.Println("=>  " metric.makespan, metric.SLR)
+	// fmt.Println("=>  ", metric.makespan, metric.SLR)
 	// fmt.Println()
 }
 
@@ -354,7 +371,7 @@ func createSampleJobDAG() *JobsDAG {
 			replicaMem:   512,
 			cpuIntensive: rand.Float64() * 1.2,
 			memIntensive: rand.Float64() * 1.2,
-			actionNum:    3,
+			actionNum:    2,
 			children:     []*Job{},
 			finish:       0,
 		}
@@ -378,7 +395,7 @@ func createSampleJobDAG() *JobsDAG {
 		// Initialize final Data size
 		for _, r := range j.replicas {
 			for _, child := range j.children {
-				r.finalDataSize[child] = rand.Float64()*20*3 + 10
+				r.finalDataSize[child] = rand.Float64()*45*3 + 10
 				// fmt.Println("from",r.ID,"to",child.ID,"final data",r.finalDataSize[child])
 			}
 		}
@@ -429,7 +446,7 @@ func createSampleReplica(j *Job) {
 }
 
 func TestNodeToActionExecutionTime(t *testing.T) {
-	rand.Seed(25)
+	rand.Seed(31)
 	nodes, _ := createSampleNode()
 	jobsDag := createSampleJobDAG()
 
@@ -462,7 +479,7 @@ func TestNodeToActionExecutionTime(t *testing.T) {
 }
 
 func TestActionDatasize(t *testing.T) {
-	rand.Seed(25)
+	rand.Seed(31)
 	// nodes, _ := createSampleNode()
 	jobsDag := createSampleJobDAG()
 
@@ -504,7 +521,7 @@ func TestActionDatasize(t *testing.T) {
 }
 
 func TestFinalDatasize(t *testing.T) {
-	rand.Seed(25)
+	rand.Seed(31)
 	// nodes, _ := createSampleNode()
 	jobsDag := createSampleJobDAG()
 

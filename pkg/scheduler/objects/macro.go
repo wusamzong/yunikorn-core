@@ -1,7 +1,8 @@
 package objects
 
 import (
-	// "fmt"
+	// "math/rand"
+	"fmt"
 
 	"math"
 	"sort"
@@ -137,8 +138,6 @@ func (a *macro) getBl(r *replica) {
 func (a *macro) allocation() {
 	a.calcTime()
 	a.calcBl()
-	a.calcEFT()
-
 }
 
 func (a *macro) calcTime() {
@@ -168,79 +167,6 @@ func (a *macro) calcTime() {
 	}
 }
 
-func (a *macro) calcEFT() {
-	for _, r := range a.replicas {
-		a.AFT[r] = math.MaxFloat64
-		for _, n := range a.nodes {
-			a.getEST(r, n) // calc EST[r][n]
-		}
-		selectNode := a.binding[r]
-		a.taskList[selectNode] = append(a.taskList[selectNode], r)
-		a.sortTaskList(selectNode)
-	}
-}
-
-func (a *macro) getEST(r *replica, n *node) {
-	if a.EST[r][n]!=-1.0{
-		return
-	}
-
-	est := 0.0
-	for _, parent := range r.parent {
-		if a.binding[parent] == nil {
-			for _, n := range a.nodes {
-				a.getEST(parent, n)
-			}
-			selectNode := a.binding[parent]
-			a.taskList[selectNode] = append(a.taskList[selectNode], parent)
-			a.sortTaskList(selectNode)
-		}
-		parentNode := a.binding[parent]
-		c := 0.0
-		if a.binding[parent] != n {
-			c = a.c[parent][r] * a.averageBandwidth / a.bw.values[parentNode][n]
-		}
-		est = math.Max(est, a.AFT[parent]+c)
-	}
-
-	freeTimes := [][]float64{}
-
-	if len(a.taskList) == 0 {
-		freeTimes = append(freeTimes, []float64{0.0, math.MaxFloat64})
-	} else {
-		for i, task := range a.taskList[n] {
-			start := a.EST[task][n]
-			if i == 0 {
-				if start != 0 {
-					freeTimes = append(freeTimes, []float64{0, start})
-				}
-			} else {
-				lastEndTime := a.EFT[a.taskList[n][i-1]][n]
-				freeTimes = append(freeTimes, []float64{lastEndTime, start})
-			}
-			lastJob := a.taskList[n][len(a.taskList[n])-1]
-			lastJobEnd := a.EFT[lastJob][n]
-			freeTimes = append(freeTimes, []float64{lastJobEnd, math.MaxFloat64})
-		}
-	}
-	for _, slot := range freeTimes {
-
-		if est < slot[0] && slot[0]+a.w[r][n] <= slot[1] {
-			est = slot[0]
-			break
-		}
-		if est >= slot[0] && est+a.w[r][n] <= slot[1] {
-			break
-		}
-	}
-	a.EST[r][n] = est
-	a.EFT[r][n] = a.EST[r][n] + a.w[r][n]
-	if a.EFT[r][n] < a.AFT[r] {
-		a.AFT[r] = a.EFT[r][n]
-		a.binding[r] = n
-	}
-}
-
 func (a *macro) sortTaskList(n *node) {
 	sort.Slice(a.taskList[n], func(i, j int) bool {
 		job1 := a.taskList[n][i]
@@ -251,6 +177,7 @@ func (a *macro) sortTaskList(n *node) {
 
 
 func (a *macro) simulate() metric {
+	fmt.Println("start simulate for macro")
 	a.allocation()
 	simulator := createSimulator(a.nodes, a.bw)
 
@@ -274,9 +201,9 @@ func (a *macro) simulate() metric {
 			if _, exist := scheduledJob[job]; exist {
 				continue
 			}
-			a.decideNode(simulator, job)
+			done:=a.decideNode(simulator, job)
 
-			if simulator.isParentJobFinish(job) {
+			if done && simulator.isParentJobFinish(job) {
 				simulator.addPendJob(job)
 				scheduledJob[job] = true
 			} else {
@@ -305,51 +232,28 @@ func (a *macro) simulate() metric {
 	}
 
 	// simulator.printFinishedJob()
+
 	makespan := simulator.current
 	SLR := calSLR(a.nodes, getCriticalPath(a.jobs), makespan)
-	speedup := calSpeedup(a.nodes, a.jobs, makespan)
-	efficiency := speedup / float64(len(a.nodes))
+	// speedup := calSpeedup(a.nodes, a.jobs, makespan)
+	// efficiency := speedup / float64(len(a.nodes))
 
 	return metric{
 		makespan:   makespan,
 		SLR:        SLR,
-		speedup:    speedup,
-		efficiency: efficiency,
+		// speedup:    speedup,
+		// efficiency: efficiency,
 	}
 }
 
-func (a *macro) decideNode(s *simulator, j *Job){
-	EFTofNode := map[*node]float64{}
-	LastJobOfNode := map[*node]*Job{}
-
-	for _, n := range a.nodes{
-		EFTofNode[n]=0.0
-	}
-
-	for _, j := range s.allocations {
-		for _, r := range j.allocReplica {
-			if r.state.finishTime > EFTofNode[r.node] {
-				EFTofNode[r.node] = r.state.finishTime
-				LastJobOfNode[r.node]=j.Job
-			}
-		}
-	}
-	for _, j := range s.pending {
-		estimateExecutionTime := 0.0
-		onlyReplica := j.Job.replicas[0]
-		for _, action := range onlyReplica.actions{
-			estimateExecutionTime+=action.executionTime/onlyReplica.node.executionRate
-		}
-
-		if s.current+estimateExecutionTime > EFTofNode[onlyReplica.node] {
-			EFTofNode[onlyReplica.node] = s.current+estimateExecutionTime
-			LastJobOfNode[onlyReplica.node]=j.Job
-		}
-	}
+func (a *macro) decideNode(s *simulator, j *Job)bool{
 	
 	var nodeSelection *node
 	minEFT := math.MaxFloat64
 	for _, n := range a.nodes{
+		if n.allocatedCpu != 0 && n.allocatedMem != 0{
+			continue
+		}
 		maxStartTime := 0.0
 
 		for _, parent := range j.parent{
@@ -400,6 +304,9 @@ func (a *macro) decideNode(s *simulator, j *Job){
 			nodeSelection = n
 		}
 	}
+	if nodeSelection == nil{
+		return false
+	}
 	onlyReplica:=j.replicas[0]
 	onlyReplica.node = nodeSelection
 	originalCPU := j.replicaCpu
@@ -409,36 +316,6 @@ func (a *macro) decideNode(s *simulator, j *Job){
 	for _, a := range onlyReplica.actions{
 		a.executionTime = a.executionTime * float64(originalCPU+originalMem)/float64(nodeSelection.cpu+nodeSelection.mem) //* 0.75
 	}
-
-
-	var time float64
-	for _, r := range j.replicas {
-
-		maxTime := 0.0
-		for _, action := range r.actions {
-			var transmissionTime, executionTime float64
-			executionTime = action.executionTime / r.node.executionRate
-			
-			transmissionTime = 0.0
-			maxTransmissionTime := 0.0
-			for _, child := range r.children {
-				from := r.node
-				to := child.node
-				datasize := action.datasize[child]
-				if from == to {
-					transmissionTime = 0.0
-				} else {
-					transmissionTime = datasize / a.bw.values[from][to]
-				}
-				if transmissionTime > maxTransmissionTime {
-					maxTransmissionTime = transmissionTime
-				}
-			}
-			if maxTransmissionTime+executionTime > maxTime {
-				maxTime = maxTransmissionTime + executionTime
-			}
-		}
-		time += maxTime
-	}
-	j.makespan = time
+	
+	return true
 }

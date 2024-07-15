@@ -171,7 +171,7 @@ func generateRandomDAGWithConfig(config comparisonConfig) *JobsDAG {
 					createdJobs[j] = true
 					createdJobs[k+nodes] = true
 					DependencyStruct[j] = append(DependencyStruct[j], k+nodes)
-					fmt.Printf("  %d -> %d ;\n", j, k+nodes) // An Edge.
+					// fmt.Printf("  %d -> %d ;\n", j, k+nodes) // An Edge.
 				}
 			}
 		}

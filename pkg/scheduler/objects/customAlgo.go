@@ -105,14 +105,15 @@ func (c *customAlgo) simulate() metric {
 	// simulator.printFinishedJob()
 	makespan:= simulator.current
 	SLR:=calSLR(c.nodes, getCriticalPath(c.jobs), makespan)
-	speedup := calSpeedup(c.nodes, c.jobs, makespan)
-	efficiency := speedup/float64(len(c.nodes))
+	// jobsWithOnlyReplica(c.jobs)
+	// speedup := calSpeedup(c.nodes, c.jobs, makespan)
+	// efficiency := speedup/float64(len(c.nodes))
 	
 	return metric{
 		makespan: makespan,
 		SLR: SLR,
-		speedup: speedup,
-		efficiency: efficiency,
+		// speedup: speedup,
+		// efficiency: efficiency,
 	}
 }
 

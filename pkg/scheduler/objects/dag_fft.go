@@ -184,41 +184,52 @@ func (j *Job) createFFTSimpleReplicaByCCR(replicaID int, config fftConfig) {
 	a.datasize[r] = 0.0
 }
 
-func executeFFTCase(level int, node int, ccr float64) []string {
+func executeFFTCase(count int, level int, node int, ccr float64) []string {
 	config := createFFTConfig(level, rand.Float64()*50+50, ccr)
 	config.node = node
-
+	
 	current := []string{}
-	for algoCount := 0; algoCount < 3; algoCount++ {
-
+	for algoCount := 0; algoCount < 4; algoCount++ {
+		rand.Seed(int64(count))
 		nodes, bw := createRandNodeForFFT(config)
 		jobsDag := generateFFTDAG(config)
 
+		var metric metric
 		if algoCount == 0 {
 			// continue
+			jobsWithOnlyReplica(jobsDag.Vectors)
 			m := createMPEFT(jobsDag.Vectors, nodes, bw)
-			// current = append(current, fmt.Sprintf("%d", jobsDag.replicasCount))
-			metric := m.simulate()
+			metric = m.simulate()
 			current = append(current, fmt.Sprintf("%.0f", metric.makespan))
 			current = append(current, fmt.Sprintf("%.3f", metric.SLR))
-			current = append(current, fmt.Sprintf("%.3f", metric.speedup))
-			current = append(current, fmt.Sprintf("%.3f", metric.efficiency))
 		} else if algoCount == 1 {
 			// continue
+			jobsWithOnlyReplica(jobsDag.Vectors)
 			p := createIPPTS(jobsDag.Vectors, nodes, bw)
-			metric := p.simulate()
+			metric = p.simulate()
 			current = append(current, fmt.Sprintf("%.0f", metric.makespan))
 			current = append(current, fmt.Sprintf("%.3f", metric.SLR))
-			current = append(current, fmt.Sprintf("%.3f", metric.speedup))
-			current = append(current, fmt.Sprintf("%.3f", metric.efficiency))
-		} else {
+		} else if algoCount == 2 {
 			c := createCustomAlgo(jobsDag.Vectors, nodes, bw)
-			metric := c.simulate()
+			metric = c.simulate()
 			current = append(current, fmt.Sprintf("%.0f", metric.makespan))
 			current = append(current, fmt.Sprintf("%.3f", metric.SLR))
-			current = append(current, fmt.Sprintf("%.3f", metric.speedup))
-			current = append(current, fmt.Sprintf("%.3f", metric.efficiency))
+		} else {
+			jobsWithOnlyReplica(jobsDag.Vectors)
+			a := createMacro(jobsDag.Vectors, nodes, bw)
+			metric = a.simulate()
+			current = append(current, fmt.Sprintf("%.0f", metric.makespan))
+			current = append(current, fmt.Sprintf("%.3f", metric.SLR))
 		}
+		rand.Seed(int64(count))
+		nodes, bw = createRandNodeForFFT(config)
+		jobsDag = generateFFTDAG(config)
+		speedup := calSpeedup(nodes, jobsDag.Vectors, metric.makespan)
+		efficiency := speedup/float64(len(nodes))
+
+		current = append(current, fmt.Sprintf("%.3f", speedup))
+		current = append(current, fmt.Sprintf("%.3f", efficiency))
+
 	}
 	return current
 }
