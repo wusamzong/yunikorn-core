@@ -138,7 +138,7 @@ func createRandNodeByConfig(config comparisonConfig) ([]*node, *bandwidth) {
 		values: map[*node]map[*node]float64{},
 	}
 
-	basedExecutionTime := 2.5
+	basedPerformance := 50.0
 	for i := 0; i < nodeCount; i++ {
 		resource := (rand.Intn(config.nodeCPURange) + 2)
 		variation := rand.Float64()*5*config.speedHeterogeneity - config.speedHeterogeneity
@@ -148,7 +148,7 @@ func createRandNodeByConfig(config comparisonConfig) ([]*node, *bandwidth) {
 			mem:           resource * 512,
 			allocatedCpu:  0,
 			allocatedMem:  0,
-			executionRate: basedExecutionTime + variation,
+			executionRate: basedPerformance + variation,
 		}
 		nodes = append(nodes, n)
 	}
@@ -167,7 +167,7 @@ func createRandNodeByConfig(config comparisonConfig) ([]*node, *bandwidth) {
 			if i == j {
 				randBandwidth = 0
 			} else {
-				randBandwidth = 3 + rand.Float64()*5
+				randBandwidth = basedPerformance + rand.Float64()*5
 
 			}
 

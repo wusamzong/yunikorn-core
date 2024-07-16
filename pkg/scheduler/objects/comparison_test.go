@@ -110,8 +110,8 @@ func runByIdx(podCountIdx []int) {
 func createStates(podCountIdx []int) [][]int {
 	state := [][]int{}
 	cases := testCase{
-		podCount: []int{800, 900,1000, 1100,1200},
-		replicaCount: []int{10,12,14},
+		podCount: []int{800, 900,1000, 1100},
+		replicaCount: []int{8,10,12},
 	}
 	for _, i := range podCountIdx {
 		for j := 0; j < len(cases.replicaCount); j++ {
@@ -124,44 +124,6 @@ func createStates(podCountIdx []int) [][]int {
 	return state
 }
 
-func TestParallel(t *testing.T) {
-	state := [][]int{}
-	var wg sync.WaitGroup
-	cases := testCase{
-		podCount:     []int{800, 900,1000, 1100,1200},
-		alpha:        []float64{0.2},
-		replicaCount: []int{10,12,14,16},
-	}
-
-	for i := 0; i < len(cases.podCount); i++ {
-		for j := 0; j < len(cases.alpha); j++ {
-			for k := 0; k < len(cases.replicaCount); k++ {
-				newState := make([]int, 8)
-				newState[0] = i
-				newState[1] = j
-				newState[2] = k
-				state = append(state, newState)
-			}
-		}
-	}
-	maxGoroutines := 10
-	guard := make(chan struct{}, maxGoroutines)
-
-	wg.Add(len(state))
-	for _, s := range state {
-		guard <- struct{}{} // 嘗試向 channel 發送一個空結構，如果 channel 滿了，這裡會阻塞
-		go func(s []int) {
-			comparison(s)
-			<-guard
-			wg.Done()
-		}(s)
-	}
-
-	wg.Wait()
-}
-
-// 700,0.20,0.40,6,32,1.00,0.500,0.50,32,702,
-// 700,0.2,0.6,4,16,10.0,0.05,0.5
 func comparison(state []int) {
 	w, file := createWriter()
 	defer file.Close()
@@ -178,10 +140,10 @@ func comparison(state []int) {
 	// "HWS", })
 
 	cases := testCase{
-		count:        1,
-		podCount:     []int{800, 900,1000, 1100,1200},
-		replicaCount: []int{10,12,14},
-		nodes:        []int{10,12,14,16,18},
+		count:        10,
+		podCount:     []int{700,800, 900,1000},
+		replicaCount: []int{8,10,12},
+		nodes:        []int{12,16,20},
 		CCR:          []float64{0.2, 0.5, 2, 5},
 		speedHete:    []float64{0.25, 0.5, 1.0, 2.0},
 		TCR:          []float64{0.2, 0.5, 2, 5}, //Transmission Cost Ratio
@@ -193,7 +155,7 @@ func comparison(state []int) {
 		// CCR:          []float64{1},
 		// speedHete:    []float64{1.0},
 		// TCR:          []float64{1}, //Transmission Cost Ratio
-		// actionCount:  []int{4},
+		// actionCount:  []int{3},
 	}
 
 	isload := true
