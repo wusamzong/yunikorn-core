@@ -26,15 +26,14 @@ def generateFigure(df,type ,group, metric):
         bar.set_hatch(hatch_patterns[int(i/lens)])  # Cycle through patterns
         bar.set_edgecolor('white')
 
-    # legend_handles = [mpatches.Patch(facecolor=colors[i], label=label, edgecolor='white', hatch=hatch_patterns[i % len(hatch_patterns)]) for i, label in enumerate(['MPEFT', 'IPPTS', 'MACRO', 'WRC'])]
-    # plt.legend(handles=legend_handles)
+    legend_handles = [mpatches.Patch(facecolor=colors[i], label=label, edgecolor='white', hatch=hatch_patterns[i % len(hatch_patterns)]) for i, label in enumerate(['MPEFT', 'IPPTS', 'MACRO', 'WRC'])]
+    plt.legend(handles=legend_handles)
 
-    plt.legend().set_visible(False)
+    # plt.legend().set_visible(False)
     if metric == '':
         metric = "makespan"
 
-    
-    plt.savefig(f"./img/{type}/{metric}/{group}.png", bbox_inches='tight')
+    plt.savefig(f"./result/fft/img/{type}/{metric}/{group}.png", bbox_inches='tight')
     plt.close()
 
 def printBigPicture(big_df):
@@ -58,7 +57,7 @@ def printBigPicture(big_df):
 plt.close('all')
 
 # Get CSV files list from a folder
-path = './result'
+path = './result/fft/result'
 csv_files = glob.glob(path + "/*.csv")
 df_list = (pd.read_csv(file) for file in csv_files)
 

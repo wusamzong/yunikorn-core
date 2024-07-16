@@ -654,7 +654,7 @@ func jobsWithOnlyReplica(jobs []*Job){
 }
 
 func integrateToOnlyReplica(j *Job){
-	alpha := 1.0
+	alpha := 0.9
 	
 	j.replicaNum = 1
 

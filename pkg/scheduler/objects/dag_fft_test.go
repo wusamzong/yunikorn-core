@@ -32,7 +32,7 @@ func TestDAGParallel(t *testing.T) {
 	cases := fftTestCase{
 		level: []int{4, 5, 6, 7}, 
 		nodes: []int{8, 12, 16, 20},
-		CCR:   []float64{0.2, 0.5, 1, 2, 5},
+		CCR:   []float64{0.25, 0.5, 1, 2, 4},
 		// level: []int{5}, 
 		// nodes: []int{8},
 		// CCR:   []float64{ 5},
@@ -79,7 +79,7 @@ func comparisonFFTDAG(level int, node int, ccr float64, wg *sync.WaitGroup) {
 		current := []string{}
 		current = append(current, fmt.Sprintf("%d", level))
 		current = append(current, fmt.Sprintf("%d", node))
-		current = append(current, fmt.Sprintf("%.1f", ccr))
+		current = append(current, fmt.Sprintf("%.25f", ccr))
 		current = append(current, executeFFTCase(count, level, node, ccr)...)
 		w.Write(current)
 		w.Flush()
