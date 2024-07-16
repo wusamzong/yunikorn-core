@@ -140,7 +140,7 @@ func createRandNodeByConfig(config comparisonConfig) ([]*node, *bandwidth) {
 
 	basedExecutionTime := 2.5
 	for i := 0; i < nodeCount; i++ {
-		resource := (rand.Intn(config.nodeCPURange) + 4)
+		resource := (rand.Intn(config.nodeCPURange) + 2)
 		variation := rand.Float64()*5*config.speedHeterogeneity - config.speedHeterogeneity
 		n := &node{
 			ID:            i,
@@ -167,7 +167,7 @@ func createRandNodeByConfig(config comparisonConfig) ([]*node, *bandwidth) {
 			if i == j {
 				randBandwidth = 0
 			} else {
-				randBandwidth = 2.5 + rand.Float64()*5
+				randBandwidth = 3 + rand.Float64()*5
 
 			}
 

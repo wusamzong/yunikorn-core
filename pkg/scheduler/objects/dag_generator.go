@@ -232,7 +232,7 @@ func generateRandomDAGWithConfig(config comparisonConfig) *JobsDAG {
 			r.parent = parentReplicas
 
 			for _, child := range j.children {
-				r.finalDataSize[child] = rand.Float64() * 75 * float64(config.actionNum) * config.ccr * config.tcr
+				r.finalDataSize[child] = rand.Float64() * 75 * config.ccr * config.tcr / float64(j.replicaNum)
 			}
 
 		}
@@ -374,11 +374,11 @@ func createRandReplicaByCCR(j *Job, ccr float64) {
 	}
 
 	for i := 0; i < j.actionNum; i++ {
-		randExecutionTime := rand.Float64() * 50 + 50
+		randExecutionTime := rand.Float64() * 75
 		for _, r := range j.replicas {
 			a := r.createAction(randExecutionTime)
 			for _, r := range j.replicas {
-				a.datasize[r] = rand.Float64() * 75 * ccr
+				a.datasize[r] = rand.Float64() * 75 * ccr /float64(j.replicaNum)
 			}
 		}
 	}

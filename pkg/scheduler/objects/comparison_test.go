@@ -85,6 +85,11 @@ func TestP5(t *testing.T) {
 	runByIdx(podCountIdx)
 }
 
+func TestP6(t *testing.T) {
+	podCountIdx := []int{5}
+	runByIdx(podCountIdx)
+}
+
 func runByIdx(podCountIdx []int) {
 	state := createStates(podCountIdx)
 	maxGoroutines := 30
@@ -105,8 +110,8 @@ func runByIdx(podCountIdx []int) {
 func createStates(podCountIdx []int) [][]int {
 	state := [][]int{}
 	cases := testCase{
-		podCount: []int{300, 400, 500, 600, 700},
-		replicaCount: []int{6, 8, 10},
+		podCount: []int{800, 900,1000, 1100,1200},
+		replicaCount: []int{10,12,14},
 	}
 	for _, i := range podCountIdx {
 		for j := 0; j < len(cases.replicaCount); j++ {
@@ -123,9 +128,9 @@ func TestParallel(t *testing.T) {
 	state := [][]int{}
 	var wg sync.WaitGroup
 	cases := testCase{
-		podCount:     []int{100, 300, 500, 700, 900},
+		podCount:     []int{800, 900,1000, 1100,1200},
 		alpha:        []float64{0.2},
-		replicaCount: []int{6, 8, 10},
+		replicaCount: []int{10,12,14,16},
 	}
 
 	for i := 0; i < len(cases.podCount); i++ {
@@ -173,14 +178,14 @@ func comparison(state []int) {
 	// "HWS", })
 
 	cases := testCase{
-		count:        10,
-		podCount:     []int{300, 400, 500, 600, 700},
-		replicaCount: []int{6, 8, 10},
-		nodes:        []int{20, 24, 28, 32},
+		count:        1,
+		podCount:     []int{800, 900,1000, 1100,1200},
+		replicaCount: []int{10,12,14},
+		nodes:        []int{10,12,14,16,18},
 		CCR:          []float64{0.2, 0.5, 2, 5},
 		speedHete:    []float64{0.25, 0.5, 1.0, 2.0},
 		TCR:          []float64{0.2, 0.5, 2, 5}, //Transmission Cost Ratio
-		actionCount:  []int{2, 4, 8, 10},
+		actionCount:  []int{2, 3, 4},
 
 		// alpha:        []float64{0.08},
 		// replicaCount: []int{6},
@@ -188,7 +193,7 @@ func comparison(state []int) {
 		// CCR:          []float64{1},
 		// speedHete:    []float64{1.0},
 		// TCR:          []float64{1}, //Transmission Cost Ratio
-		// actionCount:  []int{8},
+		// actionCount:  []int{4},
 	}
 
 	isload := true

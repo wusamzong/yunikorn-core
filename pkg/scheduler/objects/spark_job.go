@@ -126,7 +126,7 @@ func calSpeedup(nodes []*node, jobs []*Job, makespan float64) float64{
 
 			for _, replica := range job.replicas{
 				for _, action := range replica.actions{
-					sum += action.executionTime*resourceAdjust/node.executionRate * 5.5
+					sum += action.executionTime*resourceAdjust/node.executionRate
 				}
 			}
 		}

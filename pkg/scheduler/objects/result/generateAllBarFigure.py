@@ -33,7 +33,7 @@ def generateFigure(df,type ,group, metric):
         metric = "makespan"
     
     
-    plt.savefig(f"./img/{type}/{metric}/{group}.png")
+    plt.savefig(f"./result/img/{type}/{metric}/{group}.png")
     plt.close()
 
 def printBigPicture(big_df):
@@ -57,8 +57,8 @@ def printBigPicture(big_df):
 plt.close('all')
 
 # Get CSV files list from a folder
-path = './randomDAG'
-csv_files = glob.glob("./randomDAG/*.csv")
+path = './result/randomDAG'
+csv_files = glob.glob("./result/randomDAG/*.csv")
 df_list = (pd.read_csv(file) for file in csv_files)
 
 # Concatenate all DataFrames
