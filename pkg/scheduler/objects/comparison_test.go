@@ -141,10 +141,11 @@ func comparison(state []int) {
 
 	cases := testCase{
 		count:        10,
-		podCount:     []int{700,800, 900,1000},
-		replicaCount: []int{8,10,12},
-		nodes:        []int{12,16,20},
-		CCR:          []float64{0.2, 0.5, 2, 5},
+		podCount:     []int{700,800, 900,1000,1100},
+		replicaCount: []int{8,10,12,14},
+		nodes:        []int{12,14,16,18},
+		// CCR:          []float64{0.2, 0.5, 2, 5},
+		CCR:          []float64{0.1},  
 		speedHete:    []float64{0.25, 0.5, 1.0, 2.0},
 		TCR:          []float64{0.2, 0.5, 2, 5}, //Transmission Cost Ratio
 		actionCount:  []int{2, 3, 4},
@@ -178,8 +179,8 @@ func comparison(state []int) {
 									current = append(current, fmt.Sprintf("%d", cases.podCount[i]))
 									current = append(current, fmt.Sprintf("%d", cases.replicaCount[l]))
 									current = append(current, fmt.Sprintf("%d", cases.nodes[m]))
-									current = append(current, fmt.Sprintf("%.1f", cases.CCR[n]))
-									current = append(current, fmt.Sprintf("%.1f", cases.speedHete[o]))
+									current = append(current, fmt.Sprintf("%.2f", cases.CCR[n]))
+									current = append(current, fmt.Sprintf("%.2f", cases.speedHete[o]))
 									current = append(current, fmt.Sprintf("%.1f", cases.TCR[p]))
 									current = append(current, fmt.Sprintf("%d", cases.actionCount[r]))
 									config := comparisonConfig{

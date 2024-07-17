@@ -16,6 +16,10 @@ for file_path in file_paths:
 # 例如，依據 'podCount', 'replicaCount' 和 'nodeCount' 進行排序
 sorted_df = combined_df.sort_values(by=['podCount', 'replicaCount', 'nodeCount','CCR','CTV','TCR','stageCount'])
 
+sorted_df = sorted_df[sorted_df['CCR']!=4]
+sorted_df = sorted_df[sorted_df['CCR']!=0.25]
+sorted_df = sorted_df[sorted_df['replicaCount']!=8]
+
 # 將結果寫入新的 CSV 文件
 sorted_df.to_csv('./randomDAG/sorted_combined.csv', index=False)
 

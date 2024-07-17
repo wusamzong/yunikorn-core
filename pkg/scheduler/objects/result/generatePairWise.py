@@ -2,9 +2,9 @@ import glob
 import pandas as pd
 
 def compare_algorithms(df, col1, col2):
-    lower = (df[col1] < df[col2]).sum()/153600
-    equal = (df[col1] == df[col2]).sum()/153600
-    higher = (df[col1] > df[col2]).sum()/153600
+    lower = (df[col1] < df[col2]).sum()
+    equal = (df[col1] == df[col2]).sum()
+    higher = (df[col1] > df[col2]).sum()
 
     return {'lower': lower, 'equal': equal, 'higher': higher}
 
@@ -15,6 +15,10 @@ df_list = (pd.read_csv(file) for file in csv_files)
 
 # Concatenate all DataFrames
 big_df = pd.concat(df_list, ignore_index=True)
+# big_df = big_df[big_df['podCount'] != 1100]
+big_df = big_df[big_df['replicaCount'] != 8]
+# big_df = big_df[big_df['CCR'] != 5]
+# big_df = big_df[big_df['CCR'] != 4]
 
 
 df_filtered = big_df[big_df['HWS'] != 0.0]
@@ -23,7 +27,7 @@ df_filtered = big_df[big_df['IPPTS'] != 0.0]
 df_filtered = big_df[big_df['MACRO'] != 0.0]
 
 results = {}
-columns_to_compare = ['MPEFT', 'IPPTS', 'HWS', 'MACRO']
+columns_to_compare = ['HWS', 'MPEFT', 'IPPTS','MACRO']
 
 for i, col1 in enumerate(columns_to_compare):
     for col2 in columns_to_compare[i+1:]:

@@ -63,7 +63,16 @@ df_list = (pd.read_csv(file) for file in csv_files)
 
 # Concatenate all DataFrames
 big_df   = pd.concat(df_list, ignore_index=True)
+# big_df = big_df[big_df['podCount'] != 1100]
+big_df = big_df[big_df['replicaCount'] != 8]
+# big_df = big_df[big_df['CCR'] != 1]
+# big_df = big_df[big_df['CCR'] != 4]
+# big_df = big_df[big_df['CCR'] != 5]
+
+
 printBigPicture(big_df)
+
+
 
 csvAlgorithmName = ['MPEFT', 'IPPTS', 'MACRO','HWS']
 metricType = ['', 'SLR', 'speedup', 'efficiency']
