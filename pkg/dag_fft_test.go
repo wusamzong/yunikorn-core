@@ -75,7 +75,7 @@ func comparisonFFTDAG(level int, node int, ccr float64, wg *sync.WaitGroup) {
 	"IPPTS", "IPPTSSLR","IPPTSspeedup","IPPTSefficiency",
 	"HWS", "HWSSLR","HWSspeedup","HWSefficiency",
 	"MACRO", "MACROSLR","MACROspeedup","MACROefficiency"})
-	for count := 0; count<1; count++{
+	for count := 0; count<10; count++{
 		current := []string{}
 		current = append(current, fmt.Sprintf("%d", level))
 		current = append(current, fmt.Sprintf("%d", node))
@@ -88,7 +88,7 @@ func comparisonFFTDAG(level int, node int, ccr float64, wg *sync.WaitGroup) {
 
 
 func createFFTWriter() (*csv.Writer, *os.File) {
-	err := godotenv.Load()
+	err := godotenv.Load("../.env")
 	if err != nil {
 		log.Fatal("Error loading .env file")
 	}

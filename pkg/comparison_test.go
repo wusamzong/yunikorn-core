@@ -119,44 +119,6 @@ func createStates(podCountIdx []int) [][]int {
 	return state
 }
 
-func TestParallel(t *testing.T) {
-	state := [][]int{}
-	var wg sync.WaitGroup
-	cases := testCase{
-		podCount:     []int{100, 300, 500, 700, 900},
-		alpha:        []float64{0.2},
-		replicaCount: []int{6, 8, 10},
-	}
-
-	for i := 0; i < len(cases.podCount); i++ {
-		for j := 0; j < len(cases.alpha); j++ {
-			for k := 0; k < len(cases.replicaCount); k++ {
-				newState := make([]int, 8)
-				newState[0] = i
-				newState[1] = j
-				newState[2] = k
-				state = append(state, newState)
-			}
-		}
-	}
-	maxGoroutines := 10
-	guard := make(chan struct{}, maxGoroutines)
-
-	wg.Add(len(state))
-	for _, s := range state {
-		guard <- struct{}{} // 嘗試向 channel 發送一個空結構，如果 channel 滿了，這裡會阻塞
-		go func(s []int) {
-			comparison(s)
-			<-guard
-			wg.Done()
-		}(s)
-	}
-
-	wg.Wait()
-}
-
-// 700,0.20,0.40,6,32,1.00,0.500,0.50,32,702,
-// 700,0.2,0.6,4,16,10.0,0.05,0.5
 func comparison(state []int) {
 	w, file := createWriter()
 	defer file.Close()
