@@ -603,13 +603,20 @@ func (m *mpeft) calcMEFT() {
 func (m *mpeft) decideNode(j *Job) bool {
 	doneReplica := []*replica{}
 
-	min := math.MaxFloat64
-	var selectNode *node
-	selectNode = nil
 	for _, r := range j.replicas {
-		
+		min := math.MaxFloat64
+		var selectNode *node
+		selectNode = nil
 		for _, node := range m.nodes {
-			if node.allocatedCpu != 0 && node.allocatedMem != 0{
+			var currentJobCpuUsage int 
+			var currentJobMemUsage int	
+			for _, r := range doneReplica{
+				if r.node==node{
+					currentJobCpuUsage+=j.replicaCpu
+					currentJobMemUsage+=j.replicaMem
+				}
+			}
+			if node.cpu-node.allocatedCpu-currentJobCpuUsage < j.replicaCpu || node.mem-node.allocatedMem-currentJobMemUsage < j.replicaMem {
 				continue
 			}
 			
@@ -629,17 +636,8 @@ func (m *mpeft) decideNode(j *Job) bool {
 			return false
 		} else {
 			r.node = selectNode
-
-			// occupy all node && re-assign execution time
-			originalCPU := j.replicaCpu
-			originalMem := j.replicaMem
-			j.replicaCpu = selectNode.cpu
-			j.replicaMem = selectNode.mem
-			for _, a := range r.actions{
-				a.executionTime = a.executionTime * float64(originalCPU+originalMem)/float64(selectNode.cpu+selectNode.mem)
-			}
+			doneReplica = append(doneReplica, r)
 		}
-		doneReplica = append(doneReplica, r)
 	}
 
 	return true

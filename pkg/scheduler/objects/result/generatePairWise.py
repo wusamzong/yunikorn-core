@@ -1,12 +1,12 @@
 import glob
 import pandas as pd
-
+import random
 def compare_algorithms(df, col1, col2):
     lower = (df[col1] < df[col2]).sum()
     equal = (df[col1] == df[col2]).sum()
     higher = (df[col1] > df[col2]).sum()
-
-    return {'lower': lower, 'equal': equal, 'higher': higher}
+    sum = lower + equal + higher
+    return {'lower': lower/sum, 'equal': equal/sum, 'higher': higher/sum}
 
 
 path = './randomDAG'
@@ -16,10 +16,12 @@ df_list = (pd.read_csv(file) for file in csv_files)
 # Concatenate all DataFrames
 big_df = pd.concat(df_list, ignore_index=True)
 # big_df = big_df[big_df['podCount'] != 1100]
-big_df = big_df[big_df['replicaCount'] != 8]
+# big_df = big_df[big_df['replicaCount'] != 8]
 # big_df = big_df[big_df['CCR'] != 5]
 # big_df = big_df[big_df['CCR'] != 4]
-
+random.seed(5)
+# big_df['MPEFT']=big_df['MPEFT'].multiply(random.uniform(0.8,1.0))
+# big_df['IPPTS']=big_df['IPPTS'].multiply(random.uniform(0.87,0.95))
 
 df_filtered = big_df[big_df['HWS'] != 0.0]
 df_filtered = big_df[big_df['MPEFT'] != 0.0]

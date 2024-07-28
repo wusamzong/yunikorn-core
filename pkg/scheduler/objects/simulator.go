@@ -206,8 +206,7 @@ func (s *simulator) initDynamicExecutionState(newAllocJob []*allocJob) {
 			actionID := r.state.actionID
 			node := r.node
 			volume := r.replica.actions[actionID].executionTime
-			inferenceReplicaCount := s.getReplicaCount(node, j.Job)
-			r.state.executeRatio = dynamicExecutionModel(node.executionRate, inferenceReplicaCount)
+			r.state.executeRatio = dynamicExecutionModel(node.executionRate, node.replicaCount)
 
 			r.state.volume = volume
 			r.state.finishTime = s.current + r.state.volume/r.state.executeRatio
@@ -363,8 +362,7 @@ func (j *allocJob) initNextActionState(s *simulator) {
 		actionID := r.state.actionID
 		node := r.node
 		volume := r.replica.actions[actionID].executionTime
-		inferenceReplicaCount := s.getReplicaCount(node, j.Job)
-		r.state.executeRatio = dynamicExecutionModel(node.executionRate, inferenceReplicaCount)
+		r.state.executeRatio = dynamicExecutionModel(node.executionRate, node.replicaCount)
 		r.state.volume = volume
 		r.state.finishTime = s.current + r.state.volume/r.state.executeRatio
 		r.state.pivot = s.current

@@ -89,7 +89,6 @@ func testWithCase(seed int64, config comparisonConfig) []string {
 		var metric metric
 		if algoCount == 0 {
 			// continue
-			jobsWithOnlyReplica(jobsDag.Vectors)
 			jobsDag.replicasCount = len(jobsDag.Vectors)
 			m := createMPEFT(jobsDag.Vectors, nodes, bw)
 			// current = append(current, fmt.Sprintf("%d", jobsDag.replicasCount))
@@ -98,7 +97,6 @@ func testWithCase(seed int64, config comparisonConfig) []string {
 			current = append(current, fmt.Sprintf("%.3f", metric.SLR))
 		} else if algoCount == 1 {
 			// continue
-			jobsWithOnlyReplica(jobsDag.Vectors)
 			jobsDag.replicasCount = len(jobsDag.Vectors)
 			p := createIPPTS(jobsDag.Vectors, nodes, bw)
 			metric = p.simulate()
@@ -120,7 +118,6 @@ func testWithCase(seed int64, config comparisonConfig) []string {
 		rand.Seed(seed)
 		nodes, bw = createRandNodeByConfig(config)
 		jobsDag = generateRandomDAGWithConfig(config)
-		jobsWithOnlyReplica(jobsDag.Vectors)
 		speedup := calSpeedup(nodes, jobsDag.Vectors, metric.makespan)
 		efficiency := speedup/float64(len(nodes))
 
@@ -140,7 +137,7 @@ func createRandNodeByConfig(config comparisonConfig) ([]*node, *bandwidth) {
 
 	basedPerformance := 50.0
 	for i := 0; i < nodeCount; i++ {
-		resource := (rand.Intn(config.nodeCPURange) + 2)
+		resource := 16
 		variation := rand.Float64()*5*config.speedHeterogeneity - config.speedHeterogeneity
 		n := &node{
 			ID:            i,

@@ -314,7 +314,7 @@ func (a *macro) decideNode(s *simulator, j *Job)bool{
 	j.replicaCpu = nodeSelection.cpu
 	j.replicaMem = nodeSelection.mem
 	for _, a := range onlyReplica.actions{
-		a.executionTime = a.executionTime * float64(originalCPU+originalMem)/float64(nodeSelection.cpu+nodeSelection.mem) * 0.99
+		a.executionTime = a.executionTime * float64(originalCPU+originalMem)/float64(nodeSelection.cpu+nodeSelection.mem) * 1.03
 	}
 	
 	return true

@@ -110,8 +110,8 @@ func runByIdx(podCountIdx []int) {
 func createStates(podCountIdx []int) [][]int {
 	state := [][]int{}
 	cases := testCase{
-		podCount: []int{800, 900,1000, 1100},
-		replicaCount: []int{8,10,12},
+		podCount: []int{100,300,500,700,900},
+		replicaCount: []int{4,6,8},
 	}
 	for _, i := range podCountIdx {
 		for j := 0; j < len(cases.replicaCount); j++ {
@@ -141,11 +141,11 @@ func comparison(state []int) {
 
 	cases := testCase{
 		count:        10,
-		podCount:     []int{700,800, 900,1000,1100},
-		replicaCount: []int{8,10,12,14},
-		nodes:        []int{12,14,16,18},
-		// CCR:          []float64{0.2, 0.5, 2, 5},
-		CCR:          []float64{0.1},  
+		podCount:     []int{100,300,500,700,900},
+		replicaCount: []int{4,6,8},
+		nodes:        []int{4,8,16},
+		CCR:          []float64{0.2, 0.5, 2, 5},
+		// CCR:          []float64{0.1},  
 		speedHete:    []float64{0.25, 0.5, 1.0, 2.0},
 		TCR:          []float64{0.2, 0.5, 2, 5}, //Transmission Cost Ratio
 		actionCount:  []int{2, 3, 4},
@@ -153,10 +153,10 @@ func comparison(state []int) {
 		// alpha:        []float64{0.08},
 		// replicaCount: []int{6},
 		// nodes:        []int{16},
-		// CCR:          []float64{1},
+		// CCR:          []float64{2, 5},
 		// speedHete:    []float64{1.0},
 		// TCR:          []float64{1}, //Transmission Cost Ratio
-		// actionCount:  []int{3},
+		// actionCount:  []int{2,4},
 	}
 
 	isload := true
@@ -174,7 +174,7 @@ func comparison(state []int) {
 						for p := 0; p < len(cases.TCR); p++ {
 							for r := 0; r < len(cases.actionCount); r++ {
 								var q int64
-								for q = 0; q < int64(cases.count); q++ {
+								for q = 1; q < int64(cases.count); q++ {
 									current := []string{}
 									current = append(current, fmt.Sprintf("%d", cases.podCount[i]))
 									current = append(current, fmt.Sprintf("%d", cases.replicaCount[l]))

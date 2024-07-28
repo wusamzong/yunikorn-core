@@ -120,7 +120,6 @@ func calSpeedup(nodes []*node, jobs []*Job, makespan float64) float64{
 	for _, node := range nodes{
 		sum := 0.0
 
-
 		for _, job := range jobs{
 			resourceAdjust:=float64(job.replicaCpu+job.replicaMem)/float64(node.cpu+node.mem)			
 
@@ -214,8 +213,7 @@ func (job *Job) decideNode(s *simulator,nodes []*node, bw *bandwidth) bool {
 			// transmission time + Execution time "Inside" the Job
 			for _, action := range replica.actions {
 				var transmissionTime, executionTime float64
-				inferenceReplicaCount:= s.getReplicaCount(node, job)
-				executionTime = action.executionTime/dynamicExecutionModel(node.executionRate, inferenceReplicaCount)
+				executionTime = action.executionTime/dynamicExecutionModel(node.executionRate, node.replicaCount)
 				time += executionTime
 				transmissionTime = 0
 				if idx != 0 {

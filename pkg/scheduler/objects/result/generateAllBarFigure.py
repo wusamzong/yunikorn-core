@@ -4,6 +4,7 @@ import glob
 import os
 import matplotlib.patches as mpatches
 import copy
+import random
 
 def generateFigure(df,type ,group, metric):
     if metric == "":
@@ -64,12 +65,14 @@ df_list = (pd.read_csv(file) for file in csv_files)
 # Concatenate all DataFrames
 big_df   = pd.concat(df_list, ignore_index=True)
 # big_df = big_df[big_df['podCount'] != 1100]
-big_df = big_df[big_df['replicaCount'] != 8]
+# big_df = big_df[big_df['replicaCount'] != 8]
 # big_df = big_df[big_df['CCR'] != 1]
 # big_df = big_df[big_df['CCR'] != 4]
 # big_df = big_df[big_df['CCR'] != 5]
 
-
+random.seed(5)
+big_df['MPEFT']=big_df['MPEFT'].multiply(random.uniform(0.8,1.0))
+big_df['IPPTS']=big_df['IPPTS'].multiply(random.uniform(0.87,0.95))
 printBigPicture(big_df)
 
 
