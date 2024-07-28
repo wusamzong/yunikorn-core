@@ -1,0 +1,6 @@
+*.csv
+./result/*.csv
+./result/*/*.csv
+./result/img/*
+.env
+*.nohup
